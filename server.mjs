@@ -17,7 +17,7 @@ async function getResult(uf,office){
  const v={data,checkedAt:Date.now(),etag:response.headers.get('etag'),error:null,history:history.slice(-240)};cache.set(key,v);return v;
  }catch(e){const v={...old,checkedAt:Date.now(),error:e.message};cache.set(key,v);return v;}})().finally(()=>pending.delete(key));pending.set(key,job);return job;
 }
-const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp'};
+const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
 let atlasAt=0,atlasData=null,atlasPending=null;
 async function atlas(){
  if(atlasData&&Date.now()-atlasAt<60000)return atlasData;

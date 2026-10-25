@@ -44,6 +44,25 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .map-toolbar button#map-refresh{padding:5px 10px;font-size:11px}
 .map-toolbar .tag{font-size:9px;border:1px solid var(--ink);padding:3px 7px;border-radius:3px;letter-spacing:1px;font-weight:700}
 
+.map-candidate-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 12px;margin-bottom:6px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.map-cand-side{display:flex;align-items:center;gap:8px;min-width:170px}
+.map-cand-side.lula{justify-content:flex-start}
+.map-cand-side.bolsonaro{justify-content:flex-end}
+.cand-bar-photo{width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid currentColor;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.map-cand-side.lula .cand-bar-photo{border-color:#ba3340}
+.map-cand-side.bolsonaro .cand-bar-photo{border-color:#2c62b1}
+.cand-bar-meta{display:flex;flex-direction:column;line-height:1.15}
+.cand-bar-meta.right{align-items:flex-end;text-align:right}
+.cand-bar-title{font-size:11px;font-weight:600;color:var(--ink)}
+.cand-bar-title small{font-size:9px;color:var(--muted);font-weight:normal}
+.cand-bar-pct{font-family:Manrope,sans-serif;font-size:15px;font-weight:800;letter-spacing:-0.5px}
+.cand-bar-votes{font-size:10px;color:var(--muted);font-weight:500;white-space:nowrap}
+.map-bar-center{flex:1;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.map-bar-track{width:100%;height:6px;background:var(--soft);border-radius:4px;overflow:hidden;display:flex}
+.map-bar-fill-lula{background:#ba3340;height:100%;transition:width .4s ease}
+.map-bar-fill-bolsonaro{background:#2c62b1;height:100%;transition:width .4s ease}
+.map-bar-status{font-size:8px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--muted);white-space:nowrap}
+
 .map-layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 340px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);height:100%}
 .map-canvas-wrap{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;padding:8px 12px 6px;background:color-mix(in srgb,var(--soft) 35%,var(--card))}
 .map-controls{position:absolute;top:10px;left:14px;z-index:2;display:flex;gap:4px}
@@ -52,9 +71,10 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .heat-map{flex:1;min-height:0;height:auto!important;width:100%;overflow:hidden;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center}
 .heat-map:active{cursor:grabbing}
 .heat-map svg{width:100%;height:100%;max-height:100%;display:block}
-.heat-map path,.heat-map circle{stroke:var(--card);stroke-width:.6;vector-effect:non-scaling-stroke;transition:fill .2s}
+.heat-map path,.heat-map circle{stroke:var(--card);stroke-width:.6;vector-effect:non-scaling-stroke;transition:fill .35s ease,stroke .3s ease,filter .3s ease}
 .heat-map [data-place]{cursor:pointer}
-.heat-map [data-place]:hover,.heat-map [data-place]:focus,.heat-map .map-selected{stroke:var(--ink);stroke-width:2;outline:none}
+.heat-map [data-place]:hover,.heat-map [data-place]:focus{stroke:var(--ink);stroke-width:1.8;filter:brightness(1.15);outline:none}
+.heat-map .map-selected{stroke:#ffffff!important;stroke-width:2.5px!important;filter:drop-shadow(0 0 10px rgba(255,255,255,0.75)) brightness(1.2);outline:none}
 .heat-map text{font:7px 'DM Sans',sans-serif;fill:var(--ink);pointer-events:none}
 
 .map-footer-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:4px;flex-shrink:0}
@@ -112,6 +132,28 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .city-results>div{display:grid;grid-template-columns:1fr 1fr;gap:4px;border-bottom:1px solid var(--line);padding:6px 0;font-size:10px}
 .city-results b{grid-column:1/-1}
 .city-results small{grid-column:1/-1;color:var(--muted)}
+
+.state-cities-section{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.state-cities-header{margin-bottom:8px}
+.state-cities-header h3{font-size:11px;margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+.state-cities-header h3 small{color:var(--muted);font-weight:normal}
+.city-search-input{width:100%;padding:5px 8px;font-size:10px;background:var(--soft);border:1px solid var(--line);border-radius:4px;color:var(--ink);outline:none;box-sizing:border-box}
+.city-search-input:focus{border-color:var(--ink)}
+.city-list{display:flex;flex-direction:column;gap:5px}
+.mun-card{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:10px;transition:border-color .2s}
+.mun-card:hover{border-color:var(--ink)}
+.mun-card.lula-lead{border-left:3px solid #ba3340}
+.mun-card.bolsonaro-lead{border-left:3px solid #2c62b1}
+.mun-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.mun-name{font-size:10.5px;color:var(--ink);font-weight:600}
+.mun-valid{font-size:8.5px;color:var(--muted)}
+.mun-bar{width:100%;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;display:flex;margin-bottom:3px}
+.mun-fill-red{background:#ba3340;height:100%}
+.mun-fill-blue{background:#2c62b1;height:100%}
+.mun-votes{display:flex;justify-content:space-between;align-items:center;font-size:9.5px}
+.mun-votes span{display:inline-flex;align-items:center;gap:3px}
+.btn-more-cities{width:100%;padding:5px;font-size:9.5px;background:var(--card);border:1px solid var(--line);border-radius:4px;color:var(--muted);cursor:pointer;margin-top:4px}
+.btn-more-cities:hover{color:var(--ink);border-color:var(--ink)}
 .map-source{font-size:10px;color:var(--muted);line-height:1.35;padding:4px 0 0;margin:0;flex-shrink:0}
 .map-source a{text-decoration:underline}
 
