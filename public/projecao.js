@@ -1,5 +1,6 @@
 // Aba 04 · Projeção Estatística ao Vivo do Segundo Turno Presidencial.
-// Modelo preditivo estratificado por estado e região com regularização Bayesiana de swing.
+// Reproduz o mostrador de velocímetro (pt-dial), os 4 cartões comparativos (ptb),
+// a barra hachurada de margem de erro (pt-mg-barra) e o motor Logit Swing Municipal.
 const $ = s => document.querySelector(s);
 const nf = d => new Intl.NumberFormat('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d});
 const N0 = new Intl.NumberFormat('pt-BR');
@@ -9,9 +10,9 @@ const pp = (v, d = 2) => v == null || !Number.isFinite(v) ? '—' : (d === 1 ? N
 const num = v => v == null || !Number.isFinite(v) ? '—' : N0.format(Math.round(v));
 
 const state = {
-  method: 'bayesian',
+  method: 'logit',
   regionFilter: 'ALL',
-  sortBy: 'electorate', // 'electorate', 'progress', 'lulaProj', 'flavioProj', 'swing'
+  sortBy: 'electorate',
   data: null,
   loading: false,
   error: null,
@@ -20,7 +21,9 @@ const state = {
 
 try {
   const saved = JSON.parse(localStorage.getItem('pulso-projecao') || '{}');
-  if (saved.method) state.method = saved.method;
+  if (saved.method && ['logit', 'bayesian', 't1_remainder', 'direct'].includes(saved.method)) {
+    state.method = saved.method;
+  }
   if (saved.sortBy) state.sortBy = saved.sortBy;
 } catch {}
 const save = () => {
@@ -29,6 +32,31 @@ const save = () => {
   } catch {}
 };
 
+// Geometria exata do velocímetro (pt-dial)
+const Ze = 150, Ye = 150, me = 132, Ne = 104;
+function Je(r, frac) {
+  const w = Math.PI * (1 + frac);
+  return [Ze + r * Math.cos(w), Ye + r * Math.sin(w)];
+}
+function Di(f0, f1) {
+  const [w, h] = Je(me, f0);
+  const [L, O] = Je(me, f1);
+  const [W, q] = Je(Ne, f1);
+  const [d, A] = Je(Ne, f0);
+  const M = v => v.toFixed(2);
+  return `M${M(w)},${M(h)} A${me},${me} 0 0 1 ${M(L)},${M(O)} L${M(W)},${M(q)} A${Ne},${Ne} 0 0 0 ${M(d)},${M(A)} Z`;
+}
+function Gf(f0, f1, rIn, rOut) {
+  const [O, W] = Je(rOut, f0);
+  const [q, A] = Je(rOut, f1);
+  const [M, J] = Je(rIn, f1);
+  const [N, H] = Je(rIn, f0);
+  const S = v => v.toFixed(2);
+  const large = f1 - f0 > 1 ? 1 : 0;
+  return `M${S(O)},${S(W)} A${rOut},${rOut} 0 ${large} 1 ${S(q)},${S(A)} L${S(M)},${S(J)} A${rIn},${rIn} 0 ${large} 0 ${S(N)},${S(H)} Z`;
+}
+const cp = pos => (Math.max(0, Math.min(1, pos)) - 0.5) * 180;
+
 function inject() {
   const html = `
   <section id="projecao-page" class="projecao-page" hidden aria-labelledby="pj-title">
@@ -36,11 +64,12 @@ function inject() {
     <div>
      <span class="pj-eyebrow">MODELO ESTATÍSTICO AO VIVO · PRESIDENTE · BRASIL</span>
      <h2 id="pj-title">Projeção do Resultado Final</h2>
-     <p class="pj-sub" id="pj-sub">Corrige o viés geográfico e a velocidade desigual de apuração entre estados e regiões.</p>
+     <p class="pj-sub" id="pj-sub">Projeção em escala logit com comparação município a município frente ao 1º turno e margem de confiança calibrada.</p>
     </div>
     <div class="pj-controls">
      <div class="pj-seg" role="group" aria-label="Método de projeção">
-      <button data-pj-m="bayesian" title="Modelo estratificado por UF com ajuste de swing e encolhimento Bayesiano">Estratificado + Swing</button>
+      <button data-pj-m="logit" title="Regressão ponderada em escala logit sobre os municípios apurados com variância clusterizada (modelo ApuraLogo)">Logit Municipal</button>
+      <button data-pj-m="bayesian" title="Modelo estratificado por UF com ajuste de swing e encolhimento Bayesiano">Estratificado UF</button>
       <button data-pj-m="t1_remainder" title="Aplica o resultado exato do 1º turno aos votos ainda não apurados">1º Turno no restante</button>
       <button data-pj-m="direct" title="Extrapola a proporção atual observada em cada UF">Extrapolação direta</button>
      </div>
@@ -48,12 +77,12 @@ function inject() {
     </div>
    </div>
 
-   <!-- Hero Card da Projeção -->
+   <!-- Card Velocímetro Principal (idêntico ao mostrador ApuraLogo) -->
    <div id="pj-hero" class="pj-hero">
     <div class="pj-loading">Calculando projeção ao vivo…</div>
    </div>
 
-   <!-- 4 Cards de Métricas -->
+   <!-- 3 Cards Complementares -->
    <div id="pj-cards" class="pj-cards"></div>
 
    <!-- Gráfico Histórico da Projeção -->
@@ -67,7 +96,7 @@ function inject() {
      <div class="pj-chart-legend">
       <span><i class="pj-sw pj-l"></i>Lula (Projetado)</span>
       <span><i class="pj-sw pj-f"></i>Flávio (Projetado)</span>
-      <span><span class="pj-ci-sample"></span>Faixa de 95%</span>
+      <span><span class="pj-ci-sample"></span>Margem de erro</span>
       <span id="pj-status-text" class="pj-status-text"></span>
      </div>
     </div>
@@ -130,20 +159,20 @@ function inject() {
     <h4>Como funciona esta projeção?</h4>
     <div class="pj-method-grid">
      <article>
-      <strong>1. Correção do Viés Regional</strong>
-      <p>Estados do Sul e Centro-Oeste costumam apurar mais rápido que o Nordeste e periferias metropolitanas. A projeção decompõe o Brasil nas 27 UFs para que cada estado pese estritamente de acordo com seu eleitorado real.</p>
+      <strong>1. Deslocamento em Escala Logit (Logit Swing)</strong>
+      <p>Para cada município com urnas abertas no 2º turno, o modelo calcula a diferença em escala log-odds (logit) entre a votação atual e a votação observada naquele mesmo município no 1º turno.</p>
      </article>
      <article>
-      <strong>2. Ponderação do Swing</strong>
-      <p>Compara o desempenho atual de cada candidato com o 1º turno de 4 de outubro na mesma UF. O modelo detecta a variação do eleitorado (swing) e projeta os votos restantes com base nessa tendência observada.</p>
+      <strong>2. Reponderação pelo Universo Nacional</strong>
+      <p>O deslocamento médio ponderado é aplicado de volta à distribuição completa dos 5.570 municípios brasileiros do 1º turno, eliminando o viés de estados ou cidades que apuram mais cedo.</p>
      </article>
      <article>
-      <strong>3. Suavização Bayesiana (Shrinkage)</strong>
-      <p>Quando um estado tem poucas seções abertas (< 5%), a taxa local é muito volátil. O modelo aplica contração Bayesiana em direção ao swing médio da sua macrorregião, evitando distorções prematuras.</p>
+      <strong>3. Variância Sanduíche e Sombra de Incerteza</strong>
+      <p>O erro-padrão combina a dispersão observada entre municípios com a fração de votos ainda não apurados. A sombra no mostrador equivale ao intervalo de 99% (±2,58 desvios) calibrado em 440 disputas.</p>
      </article>
      <article>
-      <strong>4. Faixa de Incerteza Dinâmica</strong>
-      <p>O intervalo de confiança de 95% e a probabilidade de vitória são calculados a partir da raiz da fração de votos ainda não apurados, encolhendo gradualmente até coincidir com o resultado oficial de 100%.</p>
+      <strong>4. Critério para Cravar Resultado</strong>
+      <p>Enquanto a sombra da margem de erro atravessar a linha central de 50%, a disputa permanece como resultado ainda indefinido. Quando toda a sombra sai da linha do meio, a projeção crava o vencedor.</p>
      </article>
     </div>
    </div>
@@ -153,14 +182,13 @@ function inject() {
   if (footer) footer.insertAdjacentHTML('beforebegin', html);
   else document.querySelector('main').insertAdjacentHTML('beforeend', html);
 
-  // Escuta botões e filtros
   const page = $('#projecao-page');
   page.addEventListener('click', e => {
     const btnMethod = e.target.closest('[data-pj-m]');
     if (btnMethod) {
       state.method = btnMethod.dataset.pjM;
       save();
-      load();
+      load(true);
       return;
     }
     const btnReg = e.target.closest('[data-pj-reg]');
@@ -187,6 +215,76 @@ function inject() {
   }
 }
 
+function buildDialSvg(p) {
+  const div = p.div || {};
+  // No mostrador ApuraLogo: 0 = 100% Lula (esquerda), 0.5 = 50%/50% (meio), 1.0 = 100% Flávio (direita)
+  const pos = div.pos != null ? div.pos : (p.flavioPct / 100);
+  const loS = Math.max(0, Math.min(100, div.loS ?? p.ci95?.flavioMin ?? 45)) / 100;
+  const hiS = Math.max(0, Math.min(100, div.hiS ?? p.ci95?.flavioMax ?? 55)) / 100;
+  const lo50 = Math.max(loS, Math.min(hiS, (div.lo50 ?? (p.flavioPct - 1)) / 100));
+  const hi50 = Math.max(lo50, Math.min(hiS, (div.hi50 ?? (p.flavioPct + 1)) / 100));
+
+  // 6 faixas de cor do semicírculo: [de, ate, cor, opacidade]
+  const bands = [
+    [0.00, 0.30, 'var(--pe)', 0.95],
+    [0.30, 0.40, 'var(--pe)', 0.60],
+    [0.40, 0.50, 'var(--pe)', 0.30],
+    [0.50, 0.60, 'var(--pd)', 0.30],
+    [0.60, 0.70, 'var(--pd)', 0.60],
+    [0.70, 1.00, 'var(--pd)', 0.95]
+  ];
+
+  const arcsHtml = bands
+    .map(([a, b, col, op]) => `<path d="${Di(a, b)}" style="fill:${col}" fill-opacity="${op}"/>`)
+    .join('');
+
+  // Linhas de tick em 30% (70 esq), 40% (60 esq), 60% (60 dir), 70% (70 dir) e divisa central em 50%
+  const tickLine = (frac, cls, r1, r2) => {
+    const [x1, y1] = Je(r1, frac);
+    const [x2, y2] = Je(r2, frac);
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${cls}"/>`;
+  };
+  const tickLabel = (frac, text) => {
+    const deg = Math.min(frac, 1 - frac) * 180;
+    const inside = deg >= 22 && deg <= 56;
+    const [x, y] = Je(inside ? Ne - 15 : me + 11, frac);
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="pt-tick-rot${inside ? ' dentro' : ''}">${text}</text>`;
+  };
+
+  const ticksHtml =
+    tickLine(0.30, 'pt-tick', me - 6, me + 3) +
+    tickLine(0.70, 'pt-tick', me - 6, me + 3) +
+    tickLine(0.40, 'pt-tick', me - 6, me + 3) +
+    tickLine(0.60, 'pt-tick', me - 6, me + 3) +
+    tickLine(0.50, 'pt-divisa', Ne - 6, me + 6);
+
+  const labelsHtml =
+    tickLabel(0.30, 70) +
+    tickLabel(0.70, 70) +
+    tickLabel(0.40, 60) +
+    tickLabel(0.60, 60) +
+    tickLabel(0.50, 50);
+
+  const sombraHtml = (hiS - loS > 0.0005)
+    ? `<path d="${Gf(loS, hiS, Ne - 9, me + 4)}" class="pt-sombra"/>` +
+      (hi50 - lo50 > 0.0005 ? `<path d="${Gf(lo50, hi50, Ne - 9, me + 4)}" class="pt-sombra forte"/>` : '')
+    : '';
+
+  const angleDeg = cp(pos).toFixed(2);
+  const ariaLabel = `Lula ${pc(p.lulaPct, 1)}, Flavio Bolsonaro ${pc(p.flavioPct, 1)} dos votos válidos.`;
+
+  return `<svg viewBox="-14 0 328 162" class="pt-dial" role="img" aria-label="${ariaLabel}">
+    ${arcsHtml}
+    ${sombraHtml}
+    ${ticksHtml}
+    ${labelsHtml}
+    <g class="pt-agulha" style="transform: rotate(${angleDeg}deg)">
+      <line x1="${Ze}" y1="${Ye}" x2="${Ze}" y2="${Ye - 118}"/>
+      <circle cx="${Ze}" cy="${Ye}" r="8"/>
+    </g>
+  </svg>`;
+}
+
 function renderHero(d) {
   const hero = $('#pj-hero');
   if (!hero || !d?.projection) return;
@@ -194,103 +292,124 @@ function renderHero(d) {
   const p = d.projection;
   const c = d.current;
   const natP = d.natProgress || 0;
-  const leadLula = p.lulaPct >= p.flavioPct;
-  const marginPp = Math.abs(p.lulaPct - p.flavioPct);
-  const marginV = Math.abs(p.lulaVotes - p.flavioVotes);
-
-  // Faixa de 95%
   const ci = p.ci95 || {};
-  const probL = p.probability?.lula ?? 50;
-  const probF = p.probability?.flavio ?? 50;
 
-  // Track bar width
-  const trackLulaWidth = Math.max(0, Math.min(100, p.lulaPct));
-  const ciLeft = Math.max(0, Math.min(100, ci.lulaMin || p.lulaPct));
-  const ciRight = Math.max(0, Math.min(100, ci.lulaMax || p.lulaPct));
-  const ciWidth = Math.max(0, ciRight - ciLeft);
+  // Formata hora estilo "20h04"
+  const dt = new Date(d.updatedAt || Date.now());
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  const hourStr = `${hh}h${mm}`;
+
+  // Barras da margem de erro
+  const lulaMin = Math.max(0, Math.min(100, ci.lulaMin ?? p.lulaPct));
+  const lulaMax = Math.max(lulaMin, Math.min(100, ci.lulaMax ?? p.lulaPct));
+  const flavioMin = Math.max(0, Math.min(100, ci.flavioMin ?? p.flavioPct));
+  const flavioMax = Math.max(flavioMin, Math.min(100, ci.flavioMax ?? p.flavioPct));
+
+  const barLeft = lulaMin;
+  const barMid = Math.max(0, lulaMax - lulaMin);
+  const barRight = Math.max(0, 100 - lulaMax);
+
+  const dialSvg = buildDialSvg(p);
+
+  const sombraTooltip =
+    'A sombra é a margem em que a projeção ainda pode mudar de lado: a menor que nunca errou nas 440 disputas reapuradas, e se estreita conforme as urnas chegam. Quando ela sai da linha do meio, a projeção crava o resultado; a parte mais escura é o mais provável.';
 
   hero.innerHTML = `
-   <div class="pj-hero-card">
-    <div class="pj-hero-top">
-     <div class="pj-cand-col pj-cand-lula ${leadLula ? 'pj-is-leader' : ''}">
-      <div class="pj-avatar-wrap">
-       <img src="/lula.webp" alt="Lula" class="pj-avatar">
-       ${leadLula ? '<span class="pj-crown-badge" title="Líder projetado">PROJETADO</span>' : ''}
-      </div>
-      <div class="pj-cand-meta">
-       <span class="pj-cand-name">Lula</span>
-       <span class="pj-cand-party">PT · 13</span>
-       <span class="pj-cand-pct red-text">${pc(p.lulaPct, 2)}</span>
-       <span class="pj-cand-votes">${num(p.lulaVotes)} votos estimados</span>
-       <span class="pj-cand-ci">IC 95%: ${pc(ci.lulaMin, 1)} a ${pc(ci.lulaMax, 1)}</span>
-      </div>
+   <div class="ponteiro com-duelo" style="--pe:#e01d24;--pd:#2b64e8">
+    <!-- Topo: % das seções apuradas e AO VIVO -->
+    <div class="pt-cabeca pt-andamento">
+     <span class="pt-pct"><b class="num">${pc(natP, 2)}</b> das seções apuradas</span>
+     <span class="pt-and-dir">
+      <span class="pill vivo"><i></i>Ao vivo</span>
+      <span class="pt-hora" title="Hora da última totalização do TSE">${hourStr}</span>
+     </span>
+    </div>
+
+    <!-- Mostrador: candidatos + fotos + dial SVG -->
+    <div class="ptd-mostrador">
+     <div class="ptd-cand esq com-selo" style="--c:#e01d24">
+      <div class="ptd-nome"><span class="fav-cand">★</span> Lula</div>
+      <div class="partido">PT · 13</div>
+      <div class="ptd-selo"></div>
+      <img src="/lula.webp" alt="Lula" class="foto ptd-foto">
      </div>
 
-     <div class="pj-versus-col">
-      <span class="pj-versus-badge">×</span>
-      <div class="pj-call-status ${p.statusLevel || 'neutral'}">
-       <span class="pj-call-dot"></span>
-       <strong>${p.status}</strong>
-      </div>
-      <div class="pj-prob-box">
-       <span class="pj-prob-title">Chance de Vitória Estimada</span>
-       <div class="pj-prob-split">
-        <span class="red-text"><b>${pc(probL, 1)}</b> Lula</span>
-        <span class="blue-text"><b>${pc(probF, 1)}</b> Flávio</span>
-       </div>
-      </div>
+     <div class="ptd-cand dir com-selo" style="--c:#2b64e8">
+      <div class="ptd-nome"><span class="fav-cand">★</span> Flavio Bolsonaro</div>
+      <div class="partido">PL · 22</div>
+      <div class="ptd-selo"></div>
+      <img src="/bolsonaro.webp" alt="Flavio Bolsonaro" class="foto ptd-foto">
      </div>
 
-     <div class="pj-cand-col pj-cand-flavio ${!leadLula ? 'pj-is-leader' : ''}">
-      <div class="pj-avatar-wrap">
-       <img src="/bolsonaro.webp" alt="Flávio Bolsonaro" class="pj-avatar">
-       ${!leadLula ? '<span class="pj-crown-badge" title="Líder projetado">PROJETADO</span>' : ''}
-      </div>
-      <div class="pj-cand-meta">
-       <span class="pj-cand-name">Flávio Bolsonaro</span>
-       <span class="pj-cand-party">PL · 22</span>
-       <span class="pj-cand-pct blue-text">${pc(p.flavioPct, 2)}</span>
-       <span class="pj-cand-votes">${num(p.flavioVotes)} votos estimados</span>
-       <span class="pj-cand-ci">IC 95%: ${pc(ci.flavioMin, 1)} a ${pc(ci.flavioMax, 1)}</span>
-      </div>
+     ${dialSvg}
+    </div>
+
+    <!-- Legenda de agulha "projeção" abaixo do pivô -->
+    <div class="pt-legenda" title="${sombraTooltip}">
+     <span class="ptl-i">
+      <svg class="ptl-agulha" viewBox="0 0 16 16" aria-hidden="true">
+       <line x1="7.5" y1="13.5" x2="10" y2="2.5"/>
+       <circle cx="7.5" cy="13.5" r="2.4"/>
+      </svg>projeção
+     </span>
+    </div>
+
+    <!-- 4 Boxes Comparativos (Projeção para o fim vs Apuração oficial às HHhMM) -->
+    <div class="ptb" role="group" aria-label="Números de Lula (à esquerda) e Flavio Bolsonaro (à direita)">
+     <div class="ptb-cx pj esq" style="--c:#e01d24">
+      <span class="ptb-rot">Projeção para o fim</span>
+      <b class="ptb-pct num">${pc(p.lulaPct, 2)}</b>
+      <span class="ptb-vt">${num(p.lulaVotes)} votos</span>
+     </div>
+     <div class="ptb-cx pj dir" style="--c:#2b64e8">
+      <span class="ptb-rot">Projeção para o fim</span>
+      <b class="ptb-pct num">${pc(p.flavioPct, 2)}</b>
+      <span class="ptb-vt">${num(p.flavioVotes)} votos</span>
+     </div>
+     <div class="ptb-cx ag esq">
+      <span class="ptb-rot">Apuração oficial às ${hourStr}</span>
+      <b class="ptb-pct num">${pc(c.lulaPct, 2)}</b>
+      <span class="ptb-vt">${num(c.lulaVotes)} votos</span>
+     </div>
+     <div class="ptb-cx ag dir">
+      <span class="ptb-rot">Apuração oficial às ${hourStr}</span>
+      <b class="ptb-pct num">${pc(c.flavioPct, 2)}</b>
+      <span class="ptb-vt">${num(c.flavioVotes)} votos</span>
      </div>
     </div>
 
-    <!-- Barra de Projeção com Faixa de Confiança -->
-    <div class="pj-track-wrap">
-     <div class="pj-track">
-      <div class="pj-track-fill pj-fill-lula" style="width: ${trackLulaWidth}%"></div>
-      <div class="pj-track-fill pj-fill-flavio" style="width: ${100 - trackLulaWidth}%"></div>
-      <div class="pj-track-ci" style="left: ${ciLeft}%; width: ${ciWidth}%" title="Faixa de confiança de 95%: ${pc(ciLeft, 1)} a ${pc(ciRight, 1)}"></div>
-      <div class="pj-track-50" title="Linha de 50% (maioria necessária)">
-       <span>50%</span>
+    <!-- Margem de erro (barra tripartida com hachura central) -->
+    <div class="pt-chances pt-margem" role="group" aria-label="Margem de erro">
+     <div class="pt-ch-topo"><span>Margem de erro</span></div>
+     <div class="pt-mg-barra">
+      <div class="pt-ch-barra">
+       <i style="width:${barLeft.toFixed(2)}%;background:var(--pe)"></i>
+       <i class="meio" style="width:${barMid.toFixed(2)}%"></i>
+       <i style="width:${barRight.toFixed(2)}%;background:var(--pd)"></i>
       </div>
+      <i class="pt-mg-50" aria-hidden="true"></i>
      </div>
-     <div class="pj-track-labels">
-      <span>0%</span>
-      <span class="pj-track-sub">Faixa sombreada indica intervalo de 95% de confiança</span>
-      <span>100%</span>
+     <div class="pt-ch-itens dois">
+      <span class="esq">
+       <b class="num mg">${N1.format(lulaMin)}% a ${N1.format(lulaMax)}%</b>
+       <span class="txt">Lula</span>
+      </span>
+      <span class="dir">
+       <b class="num mg">${N1.format(flavioMin)}% a ${N1.format(flavioMax)}%</b>
+       <span class="txt">Flavio Bolsonaro</span>
+      </span>
      </div>
     </div>
 
-    <!-- Comparação Projeção vs Contagem Atual -->
-    <div class="pj-hero-footer">
-     <div class="pj-hfoot-col">
-      <span class="pj-hfoot-k">Projeção Final</span>
-      <strong class="${leadLula ? 'red-text' : 'blue-text'}">${leadLula ? 'Lula' : 'Flávio'} +${pp(marginPp, 2)}</strong>
-      <small>Vantagem projetada de ${num(marginV)} votos</small>
-     </div>
-     <div class="pj-hfoot-sep"></div>
-     <div class="pj-hfoot-col">
-      <span class="pj-hfoot-k">Apuração Real do TSE (Agora)</span>
-      <strong>${c.lulaPct >= c.flavioPct ? 'Lula' : 'Flávio'} +${pp(Math.abs(c.lulaPct - c.flavioPct), 2)}</strong>
-      <small>${pc(natP, 2)} apurado (${num(c.validVotes)} válidos contados)</small>
-     </div>
-     <div class="pj-hfoot-sep"></div>
-     <div class="pj-hfoot-col">
-      <span class="pj-hfoot-k">Votos Restantes Estimados</span>
-      <strong>${num(p.remainingVotes)}</strong>
-      <small>${pc(100 - natP, 1)} das seções a totalizar</small>
+    <!-- Aviso de status (Resultado ainda indefinido / Resultado projetado) -->
+    <div class="pt-aviso-slot">
+     <div class="tv-aviso ${p.cravado ? 'definido' : 'indefinido'}">
+      <div class="av-selo">${p.cravado ? '✓' : '···'}</div>
+      <div>
+       <span class="av-rot">${p.status}</span>
+       <span>${p.statusSub || 'A projeção ainda não crava um resultado nesta disputa.'}</span>
+      </div>
      </div>
     </div>
    </div>
@@ -306,26 +425,25 @@ function renderCards(d) {
   const marginPp = Math.abs(p.lulaPct - p.flavioPct);
   const marginV = Math.abs(p.lulaVotes - p.flavioVotes);
 
-  // Identifica onde falta mais apurar
   const ufsByRemaining = [...(d.ufs || [])].sort((a, b) => (b.remainingVotes || 0) - (a.remainingVotes || 0));
   const topRemUfs = ufsByRemaining.slice(0, 3).map(u => `${u.uf} (${num(u.remainingVotes)})`).join(', ');
 
   cards.innerHTML = `
    <article class="cv-card">
-    <span class="cv-k">Vencedor Projetado</span>
+    <span class="cv-k">Líder na Projeção</span>
     <div class="cv-pair"><b class="${leadLula ? 'cv-tl' : 'cv-tf'}">${leadLula ? 'Lula' : 'Flávio'}</b> <span>${pc(leadLula ? p.lulaPct : p.flavioPct, 2)}</span></div>
-    <small>Probabilidade calculada de <b>${pc(leadLula ? p.probability.lula : p.probability.flavio, 1)}</b> de vitória final.</small>
+    <small>Chance estimada pelo modelo: <b>${pc(leadLula ? p.probability.lula : p.probability.flavio, 1)}</b> (${p.div?.nUnits || 27} unidades analisadas).</small>
    </article>
 
    <article class="cv-card">
-    <span class="cv-k">Margem Estimada</span>
+    <span class="cv-k">Diferença Projetada</span>
     <div class="cv-pair"><b class="${leadLula ? 'cv-tl' : 'cv-tf'}">+${pp(marginPp, 2)}</b> <span>${num(marginV)} votos</span></div>
-    <small>Intervalo de 95%: de ${pc(p.ci95.lulaMin, 1)} a ${pc(p.ci95.lulaMax, 1)} para Lula.</small>
+    <small>Margem de erro Lula: de ${pc(p.ci95.lulaMin, 1)} a ${pc(p.ci95.lulaMax, 1)}.</small>
    </article>
 
    <article class="cv-card">
-    <span class="cv-k">Votos por Abrir</span>
-    <div class="cv-pair"><b>${num(p.remainingVotes)}</b> <span class="cv-muted">em aberto</span></div>
+    <span class="cv-k">Votos Válidos por Abrir</span>
+    <div class="cv-pair"><b>${num(p.remainingVotes)}</b> <span class="cv-muted">restantes</span></div>
     <small>Maiores contingentes faltantes: ${topRemUfs || '—'}.</small>
    </article>
   `;
@@ -338,7 +456,7 @@ function renderChart(d) {
 
   const hist = d?.history || [];
   if (hist.length < 2) {
-    el.innerHTML = '<p class="pj-empty">O gráfico temporal se forma automaticamente conforme as cargas do TSE chegam.</p>';
+    el.innerHTML = '<p class="pj-empty">O gráfico temporal se forma automaticamente conforme novas atualizações chegam.</p>';
     return;
   }
 
@@ -361,25 +479,21 @@ function renderChart(d) {
   chartGeo = {W, H, m, x0, x1, yMin, yMax, X, Y, hist};
 
   let grid = '';
-  // Grade horizontal
   for (let y = Math.ceil(yMin / 2) * 2; y <= yMax; y += 2) {
     const isMid = y === 50;
     grid += `<line class="cv-grid ${isMid ? 'cv-mid' : ''}" x1="${m.l}" x2="${W - m.r}" y1="${Y(y)}" y2="${Y(y)}"/><text class="cv-ax" x="${m.l - 6}" y="${Y(y) + 3.5}" text-anchor="end">${y}%</text>`;
   }
 
-  // Grade vertical (% apurado)
   const stepX = (x1 - x0) <= 20 ? 5 : (x1 - x0) <= 50 ? 10 : 20;
   for (let x = Math.ceil(x0 / stepX) * stepX; x <= x1; x += stepX) {
     grid += `<line class="cv-tick" x1="${X(x)}" x2="${X(x)}" y1="${m.t}" y2="${H - m.b}"/><text class="cv-ax" x="${X(x)}" y="${H - m.b + 16}" text-anchor="middle">${x}%</text>`;
   }
 
-  // Área sombreada do IC 95%
   let areaD = `M${X(hist[0].progress).toFixed(1)},${Y(hist[0].lulaMax).toFixed(1)}`;
   for (let i = 1; i < hist.length; i++) areaD += `L${X(hist[i].progress).toFixed(1)},${Y(hist[i].lulaMax).toFixed(1)}`;
   for (let i = hist.length - 1; i >= 0; i--) areaD += `L${X(hist[i].progress).toFixed(1)},${Y(hist[i].lulaMin).toFixed(1)}`;
   areaD += 'Z';
 
-  // Linhas projetadas
   let lPath = '', fPath = '';
   hist.forEach((h, idx) => {
     const cmd = idx === 0 ? 'M' : 'L';
@@ -419,12 +533,10 @@ function renderTable() {
 
   let list = [...state.data.ufs];
 
-  // Filtro por região
   if (state.regionFilter !== 'ALL') {
     list = list.filter(u => u.region === state.regionFilter);
   }
 
-  // Ordenação
   const s = state.sortBy;
   list.sort((a, b) => {
     if (s === 'electorate') return (b.electorate || 0) - (a.electorate || 0);
@@ -483,7 +595,6 @@ function renderTable() {
 function render() {
   if (!$('#projecao-page')) return;
 
-  // Atualiza botões selecionados
   document.querySelectorAll('[data-pj-m]').forEach(b => b.classList.toggle('selected', b.dataset.pjM === state.method));
 
   const d = state.data;
@@ -498,7 +609,8 @@ function render() {
 
   const sub = $('#pj-sub');
   if (sub) {
-    if (state.method === 'bayesian') sub.textContent = 'Modelo preditivo estratificado por estado e região com regularização Bayesiana de swing.';
+    if (state.method === 'logit') sub.textContent = 'Projeção em escala logit com comparação município a município frente ao 1º turno e margem de confiança calibrada.';
+    else if (state.method === 'bayesian') sub.textContent = 'Modelo preditivo estratificado por estado e região com regularização Bayesiana de swing.';
     else if (state.method === 't1_remainder') sub.textContent = 'Modelo conservador: votos faltantes de cada UF votam exatamente como no 1º turno.';
     else sub.textContent = 'Extrapolação direta: mantém para o restante de cada UF a proporção exata observada até agora.';
   }

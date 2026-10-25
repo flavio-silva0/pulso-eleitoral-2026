@@ -9,7 +9,7 @@ const chrome = spawn(chromePath, [
   '--no-first-run',
   '--no-default-browser-check',
   '--disable-gpu',
-  '--window-size=1280,900'
+  '--window-size=1280,1080'
 ]);
 
 async function waitForChrome(retries = 20) {
@@ -62,55 +62,41 @@ async function run() {
     await send('Page.enable');
 
     await new Promise(r => setTimeout(r, 1000));
-    await send('Runtime.evaluate', { expression: 'location.hash = "#projecao"' });
-    await new Promise(r => setTimeout(r, 2500));
+    await send('Runtime.evaluate', { expression: 'localStorage.removeItem("pulso-projecao"); location.hash = "#projecao";' });
+    await new Promise(r => setTimeout(r, 4000));
 
     const evalRes = await send('Runtime.evaluate', {
       expression: `(() => {
         const title = document.querySelector('#pj-title')?.textContent;
-        const sub = document.querySelector('#pj-sub')?.textContent;
-        const selectedNav = document.querySelector('nav a.current')?.textContent;
-        const navLinks = Array.from(document.querySelectorAll('nav a')).map(a => a.textContent);
-        const lulaPct = document.querySelector('.pj-cand-lula .pj-cand-pct')?.textContent;
-        const flavioPct = document.querySelector('.pj-cand-flavio .pj-cand-pct')?.textContent;
-        const callStatus = document.querySelector('.pj-call-status strong')?.textContent;
-        const probText = document.querySelector('.pj-prob-split')?.textContent.replace(/\\s+/g, ' ').trim();
-        const cards = Array.from(document.querySelectorAll('#pj-cards .cv-card')).map(c => ({
-          k: c.querySelector('.cv-k')?.textContent,
-          text: c.textContent.replace(/\\s+/g, ' ').trim()
+        const headerPct = document.querySelector('.pt-andamento .pt-pct')?.textContent;
+        const liveHora = document.querySelector('.pt-andamento .pt-hora')?.textContent;
+        const boxes = Array.from(document.querySelectorAll('.ptb-cx')).map(b => ({
+          rot: b.querySelector('.ptb-rot')?.textContent,
+          pct: b.querySelector('.ptb-pct')?.textContent,
+          vt: b.querySelector('.ptb-vt')?.textContent
         }));
-        const tableRows = document.querySelectorAll('#pj-table-body tr').length;
-        const sampleRow = document.querySelector('#pj-table-body tr')?.textContent.replace(/\\s+/g, ' ').trim();
-
-        return {
-          title,
-          sub,
-          selectedNav,
-          navLinks,
-          lulaPct,
-          flavioPct,
-          callStatus,
-          probText,
-          cards,
-          tableRows,
-          sampleRow
-        };
+        const margins = Array.from(document.querySelectorAll('.pt-ch-itens > span')).map(s => s.textContent.replace(/\\s+/g, ' ').trim());
+        const aviso = document.querySelector('.tv-aviso')?.textContent.replace(/\\s+/g, ' ').trim();
+        const agulhaStyle = document.querySelector('.pt-agulha')?.getAttribute('style');
+        return { title, headerPct, liveHora, boxes, margins, aviso, agulhaStyle };
       })()`,
       returnByValue: true
     });
 
-    console.log('Evaluation Result:', JSON.stringify(evalRes.result.value, null, 2));
+    console.log('Projecao Page State:\n', JSON.stringify(evalRes.result.value, null, 2));
 
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     await writeFile('.runtime/test-projecao.png', Buffer.from(shot.data, 'base64'));
     console.log('Saved screenshot to .runtime/test-projecao.png');
 
     ws.close();
-  } catch (err) {
-    console.error('Test error:', err);
   } finally {
     chrome.kill();
   }
 }
 
-run();
+run().catch(err => {
+  console.error('Test failed:', err);
+  chrome.kill();
+  process.exit(1);
+});

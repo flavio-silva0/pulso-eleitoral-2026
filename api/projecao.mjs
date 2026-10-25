@@ -4,7 +4,7 @@ import { computeProjection } from '../lib/projecao.mjs';
 export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
-    const method = url.searchParams.get('method') || 'bayesian';
+    const method = url.searchParams.get('method') || 'logit';
     const atlasMap = await atlas();
     const data = await computeProjection(atlasMap, { method });
     res.writeHead(200, {
