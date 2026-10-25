@@ -1,3 +1,4 @@
+import {initMaps,heatColor} from './maps.js';
 const $=s=>document.querySelector(s),fmt=n=>n==null?'—':new Intl.NumberFormat('pt-BR').format(n),pct=n=>n==null?'—':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%',escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const regions={'Norte':['AC','AM','AP','PA','RO','RR','TO'],'Nordeste':['AL','BA','CE','MA','PB','PE','PI','RN','SE'],'Centro-Oeste':['DF','GO','MS','MT'],'Sudeste':['ES','MG','RJ','SP'],'Sul':['PR','RS','SC'],'Exterior':['ZZ']};
 let uf='BR',office='presidente',states={},result=null,sequence=0,favorites=[],atlasData={},geometry=null;
@@ -20,7 +21,8 @@ function render(){
  $('#progress').textContent=pct(d.progress);$('#sections').textContent=`${fmt(d.counted)} de ${fmt(d.sections)} seções`;$('#progressbar').style.width=`${Math.min(100,d.progress||0)}%`;
  $('#valid').textContent=fmt(d.valid);$('#turnout').textContent=fmt(d.turnout);$('#invalid').textContent=`${fmt(d.blank)} / ${fmt(d.nulls)}`;$('#abstentions').textContent=fmt(d.abstentions);
  const [a,b]=d.candidates;$('#gap').textContent=d.valid>0&&a&&b?(a.votes===b.votes?'Empate na contagem parcial':`Diferença: ${fmt(a.votes-b.votes)} votos · ${pct(a.percent-b.percent).replace('%',' p.p.')}`):'Aguardando os primeiros votos';
- $('#generated').textContent=`Carga do TSE: ${d.generated}`;$('#source').href=d.source;
+ $('#generated').textContent=`${d.sourceKind==='external-bu'?'Boletins · seuimposto.com':'Carga do TSE'}: ${d.generated}`;$('#source').href=d.source;
+ $('.progress-label').innerHTML=`<span><b id="progress">${pct(d.progress)}</b> das seções ${d.sourceKind==='external-bu'?'com boletins coletados':'totalizadas'}</span><span id="sections">${fmt(d.counted)} de ${fmt(d.sections)} seções</span>`;
  const history=result.history||[];$('#history-count').textContent=history.length;
  $('#history').innerHTML=history.slice(-4).reverse().map(h=>`<div class="history-row"><time>${new Date(h.at).toLocaleTimeString('pt-BR')}</time><span>${pct(h.progress)} totalizado</span><span>${fmt(h.candidates.reduce((s,c)=>s+c.votes,0))} votos nominais</span></div>`).join('');
  if(history.length<2||!d.valid){$('#chart').innerHTML='<p class="empty">A história da noite começa aqui.<br>A curva aparece quando chegam novas cargas com votos.</p>'}else{
@@ -36,11 +38,12 @@ function renderMap(){
  const entries=Object.entries(atlasData).sort((a,b)=>(b[1].data?.progress||0)-(a[1].data?.progress||0));
  $('#state-ranking').innerHTML=entries.map(([code,r])=>{const d=r.data,c=d?.candidates?.[0];return `<button class="ranking-row" data-ranking="${code}"><b>${code}</b><span>${escape(states[code])}</span><span>${r.error?'Indisponível':d?.valid?escape(c?.name):'Sem votos'}</span><strong>${pct(d?.progress)}</strong></button>`}).join('');
 }
-async function loadAtlas(){try{const response=await fetch('/api/atlas');if(!response.ok)throw Error();atlasData=await response.json();renderMap();$('#atlas-status').textContent='Presidente · cores indicam liderança parcial. Cinza: sem votos ou indisponível.'}catch{$('#atlas-status').textContent='Mapa sem atualização. Consulte cada estado pelo seletor.'}}
+async function loadAtlas(){try{const response=await fetch('/api/atlas');if(!response.ok)throw Error();atlasData=await response.json();renderMap();document.dispatchEvent(new Event('atlas-update'));$('#atlas-status').textContent='Presidente · cores indicam liderança parcial. Cinza: sem votos ou indisponível.'}catch{$('#atlas-status').textContent='Mapa sem atualização. Consulte cada estado pelo seletor.'}}
 async function load(){const request=++sequence;$('#refresh').disabled=true;try{
  const response=await fetch(`/api/results?uf=${uf}&office=${office}`);if(!response.ok)throw Error('Servidor indisponível');const data=await response.json();if(request!==sequence)return;result=data;
  $('#connection').textContent=data.error?'● FONTE INDISPONÍVEL':'● CONECTADO AO TSE';$('#checked').textContent='Última consulta: '+new Date(data.checkedAt).toLocaleTimeString('pt-BR');
  $('#notice').classList.toggle('error',!!data.error);$('#notice').textContent=data.error?(data.data?'Consulta falhou. Exibindo a última carga recebida. ':'')+data.error:data.data?.finished?'Totalização encerrada segundo o TSE. Consulte a situação de cada candidato.':data.data?.counted===0?'Aguardando a apuração · O TSE ainda não publicou seções totalizadas nesta abrangência. Os votos aparecerão automaticamente.':'Apuração em andamento · Os resultados são parciais e podem mudar a cada atualização.';
+ if(data.data?.sourceKind==='external-bu'){$('#connection').textContent=data.error?'● BOLETINS DESATUALIZADOS':'● BOLETINS DO EXTERIOR';$('#notice').textContent=(data.error?'Falha na atualização; exibindo a última carga. ':'')+data.note;}
  render();
  }catch(e){if(request!==sequence)return;$('#connection').textContent='● SEM CONEXÃO';$('#notice').textContent='Não foi possível consultar o servidor. '+(result?.data?'Os números exibidos são da última consulta bem-sucedida.':'Tentaremos novamente automaticamente.');$('#notice').classList.add('error');if(!result)render();}finally{if(request===sequence)$('#refresh').disabled=false}}
 $('#uf').onchange=e=>select(e.target.value);document.querySelectorAll('[data-office]').forEach(b=>b.onclick=()=>select(b.dataset.office==='governador'&&['BR','ZZ'].includes(uf)?'AC':uf,b.dataset.office));
@@ -55,4 +58,7 @@ $('#historico').insertAdjacentHTML('beforeend','<details class="ranking"><summar
 $('#brazil-map').onclick=e=>{const p=e.target.closest('[data-map-uf]');if(p)select(p.dataset.mapUf,'presidente')};
 $('#brazil-map').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const p=e.target.closest('[data-map-uf]');if(p){e.preventDefault();select(p.dataset.mapUf,'presidente')}}};
 $('#state-ranking').onclick=e=>{const b=e.target.closest('[data-ranking]');if(b)select(b.dataset.ranking,'presidente')};
+$('#placar').insertAdjacentHTML('beforebegin','<div id="exterior-banner" class="exterior-banner" hidden></div>');
+document.addEventListener('exterior-update',e=>{const r=e.detail;if(!r.data)return;const t=r.data.total;$('#exterior-banner').hidden=false;$('#exterior-banner').innerHTML=`<div><span class="eyebrow">${r.error?'ÚLTIMA CARGA · ATUALIZAÇÃO INDISPONÍVEL':'JÁ HÁ VOTOS NO EXTERIOR'}</span><p><b>Lula: ${fmt(t['13'])}</b> · <b>Flavio Bolsonaro: ${fmt(t['22'])}</b> · ${fmt(t.secoes)} seções coletadas</p><small>Boletins agregados pelo seuimposto.com · ${new Date(r.data.gerado).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})} · separados da totalização nacional.</small></div><button id="open-exterior">Ver exterior ↗</button>`;$('#open-exterior').onclick=()=>select('ZZ')});
+initMaps({getAtlas:()=>atlasData,getStates:()=>states,getBrazil:()=>geometry,onSelect:u=>select(u,'presidente')});
 try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,30000);setInterval(loadAtlas,60000);

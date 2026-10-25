@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {readFile,mkdir,appendFile} from 'node:fs/promises';
 import {states,sourceUrl,normalize} from './lib/tse.mjs';
+import {getExterior,exteriorResult} from './lib/exterior.mjs';
 const cache=new Map(),pending=new Map();
 await mkdir('.runtime',{recursive:true});
 async function getResult(uf,office){
@@ -16,7 +17,7 @@ async function getResult(uf,office){
  const v={data,checkedAt:Date.now(),etag:response.headers.get('etag'),error:null,history:history.slice(-240)};cache.set(key,v);return v;
  }catch(e){const v={...old,checkedAt:Date.now(),error:e.message};cache.set(key,v);return v;}})().finally(()=>pending.delete(key));pending.set(key,job);return job;
 }
-const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json'};
+const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js'};
 let atlasAt=0,atlasData=null,atlasPending=null;
 async function atlas(){
  if(atlasData&&Date.now()-atlasAt<60000)return atlasData;
@@ -25,11 +26,14 @@ async function atlas(){
 }
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
+ if(url.pathname==='/api/exterior'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getExterior()));}
  if(url.pathname==='/api/atlas'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await atlas()));}
  if(url.pathname==='/api/results'){
  const uf=(url.searchParams.get('uf')||'BR').toUpperCase(),office=url.searchParams.get('office')||'presidente';
  try{sourceUrl(uf,office)}catch{res.writeHead(400,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Seleção inválida'}));}
- const result=await getResult(uf,office);res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify({...result,etag:undefined}));
+ let result=await getResult(uf,office);
+ if(uf==='ZZ'&&office==='presidente'&&!(result.data?.counted>0)){const feed=await getExterior();if(feed.data){result={...result,data:exteriorResult(result.data,feed.data),officialData:result.data,checkedAt:feed.checkedAt,error:feed.error,history:[],note:'Contagem de boletins do exterior agregada pelo seuimposto.com; ainda não é a totalização oficial. Não somada ao placar nacional.'};}}
+ res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify({...result,etag:undefined}));
  }
  if(url.pathname==='/api/states'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(states));}
  if(!files[url.pathname]){res.writeHead(404);return res.end('Não encontrado');}
