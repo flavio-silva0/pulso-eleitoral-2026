@@ -123,9 +123,9 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     <aside class="map-detail" id="map-detail"></aside>
    </div>
    <div class="map-bottom-bar" id="map-bottom-bar">
-    <div class="bottom-live-badge" title="Usuários acompanhando a apuração ao vivo">
+    <div class="bottom-live-badge" title="Pessoas acompanhando a apuração ao vivo agora">
      <span class="live-pulse"></span>
-     <span class="live-text"><strong class="live-counter-val">—</strong> pessoas ao vivo</span>
+     <span class="live-text"><strong class="live-counter-val">1</strong> <span class="live-label-text">pessoa ao vivo</span></span>
     </div>
     <div class="bottom-update">
      <span class="update-label">Última atualização:</span>

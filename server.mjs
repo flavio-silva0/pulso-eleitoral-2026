@@ -28,7 +28,7 @@ async function atlas(){
 }
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
- if(url.pathname==='/api/presence'){const id=url.searchParams.get('id')||req.socket.remoteAddress||'client';res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');return res.end(JSON.stringify(getPresenceData(id)));}
+ if(url.pathname==='/api/presence'){const id=url.searchParams.get('id')||req.socket.remoteAddress||'client';const isLeaving=url.searchParams.get('leave')==='1'||req.method==='DELETE';res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');return res.end(JSON.stringify(getPresenceData(id,isLeaving)));}
  if(url.pathname==='/api/exterior'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getExterior()));}
  if(url.pathname==='/api/atlas'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await atlas()));}
  if(url.pathname==='/api/results'){

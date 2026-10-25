@@ -109,9 +109,11 @@ function renderBrazilMapTooltip(code, placeName){
    <div class="tip-sub">${escape(subText)}</div>
   </div>
 
-  <div class="tip-track">
-   <div class="tip-track-lula" style="width:${lPct}%"></div>
-   <div class="tip-track-bolsonaro" style="width:${bPct}%"></div>
+  <div class="tip-track ${hasData ? '' : 'empty'}">
+   ${hasData ? `
+    <div class="tip-track-lula" style="width:${lPct}%"></div>
+    <div class="tip-track-bolsonaro" style="width:${bPct}%"></div>
+   ` : ''}
   </div>
 
   <div class="tip-candidates">
@@ -121,7 +123,7 @@ function renderBrazilMapTooltip(code, placeName){
      <div class="tip-cand-name"><strong>Lula</strong> <small>PT · 13</small></div>
      <div class="tip-cand-votes">${hasData ? fmt(lVotes) + ' votos' : 'Sem apuração'}</div>
     </div>
-    <div class="tip-cand-pct red-text">${lPctStr}</div>
+    <div class="tip-cand-pct ${hasData ? 'red-text' : 'muted-text'}">${lPctStr}</div>
    </div>
 
    <div class="tip-candidate ${hasData && bVotes > lVotes ? 'tip-lead tip-lead-bolsonaro' : ''}">
@@ -130,7 +132,7 @@ function renderBrazilMapTooltip(code, placeName){
      <div class="tip-cand-name"><strong>Flávio Bolsonaro</strong> <small>PL · 22</small></div>
      <div class="tip-cand-votes">${hasData ? fmt(bVotes) + ' votos' : 'Sem apuração'}</div>
     </div>
-    <div class="tip-cand-pct blue-text">${bPctStr}</div>
+    <div class="tip-cand-pct ${hasData ? 'blue-text' : 'muted-text'}">${bPctStr}</div>
    </div>
   </div>
 
@@ -195,21 +197,31 @@ $('#state-ranking').onclick=e=>{const b=e.target.closest('[data-ranking]');if(b)
 $('#placar').insertAdjacentHTML('beforebegin','<div id="exterior-banner" class="exterior-banner" hidden></div>');
 document.addEventListener('exterior-update',e=>{const r=e.detail;if(!r.data)return;const t=r.data.total;$('#exterior-banner').hidden=false;$('#exterior-banner').innerHTML=`<div><span class="eyebrow">${r.error?'ÚLTIMA CARGA · ATUALIZAÇÃO INDISPONÍVEL':'JÁ HÁ VOTOS NO EXTERIOR'}</span><p><span class="banner-candidate"><img src="/lula.webp" class="mini-photo" alt="Lula"> <b>Lula: ${fmt(t['13'])}</b></span> · <span class="banner-candidate"><img src="/bolsonaro.webp" class="mini-photo" alt="Flavio Bolsonaro"> <b>Flavio: ${fmt(t['22'])}</b></span> · ${fmt(t.secoes)} seções coletadas</p><small>Boletins agregados pelo seuimposto.com · ${new Date(r.data.gerado).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})} · separados da totalização nacional.</small></div><button id="open-exterior">Ver exterior ↗</button>`;$('#open-exterior').onclick=()=>select('ZZ')});
 initMaps({getAtlas:()=>atlasData,getStates:()=>states,getBrazil:()=>geometry,getNational:()=>(uf==='BR'?result?.data:null),onSelect:u=>select(u,'presidente'),onRefresh:()=>{load();loadAtlas();}});
-let clientId=sessionStorage.getItem('pulso_cid');
-if(!clientId){clientId='u_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);try{sessionStorage.setItem('pulso_cid',clientId);}catch{}}
-async function syncPresence(){
+function updateLiveCounters(count){
+ const num=Math.max(1,Number(count)||1);
+ const formatted=fmt(num);
+ const label=num===1?'pessoa ao vivo':'pessoas ao vivo';
+ document.querySelectorAll('.live-counter-val').forEach(el=>el.textContent=formatted);
+ document.querySelectorAll('.live-label-text').forEach(el=>el.textContent=label);
+}
+
+let clientId=localStorage.getItem('pulso_uid');
+if(!clientId){clientId='u_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);try{localStorage.setItem('pulso_uid',clientId);}catch{}}
+async function syncPresence(isLeaving=false){
  try{
-  const res=await fetch(`/api/presence?id=${encodeURIComponent(clientId)}`);
+  const url=`/api/presence?id=${encodeURIComponent(clientId)}${isLeaving?'&leave=1':''}`;
+  if(isLeaving&&navigator.sendBeacon){navigator.sendBeacon(url);return;}
+  const res=await fetch(url);
   if(!res.ok)throw Error();
   const d=await res.json();
-  if(d?.count){const formatted=fmt(d.count);document.querySelectorAll('.live-counter-val').forEach(el=>el.textContent=formatted);}
+  if(d?.count!=null)updateLiveCounters(d.count);
   if(d?.brasiliaTime){document.querySelectorAll('.last-update-val').forEach(el=>{if(!el.textContent||el.textContent==='—')el.textContent=d.brasiliaTime;});}
  }catch{
-  const now=Date.now(),sec=Math.floor(now/1000);
-  const est=Math.round(1540+Math.sin(sec/43)*32+Math.cos(sec/17)*16);
-  document.querySelectorAll('.live-counter-val').forEach(el=>el.textContent=fmt(est));
+  updateLiveCounters(1);
  }
 }
 syncPresence();
-setInterval(syncPresence,20000);
+setInterval(syncPresence,15000);
+window.addEventListener('pagehide',()=>syncPresence(true));
+window.addEventListener('beforeunload',()=>syncPresence(true));
 try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,30000);setInterval(loadAtlas,60000);
