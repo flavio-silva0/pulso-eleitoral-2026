@@ -266,3 +266,373 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
 
 /* Toast */
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;background:var(--ink);color:#ffffff;border-radius:8px;display:none;z-index:10;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+
+/* =========================================================
+   RESPONSIVIDADE MOBILE (SMARTPHONES E TELAS ATÉ 768px)
+   ========================================================= */
+@media (max-width: 768px) {
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  body {
+    font-size: 13.5px;
+  }
+  header {
+    height: 48px;
+    padding: 0 12px;
+  }
+  .brand {
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .brand-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+  .brand small {
+    display: none;
+  }
+  nav {
+    gap: 16px;
+    font-size: 13.5px;
+  }
+
+  main {
+    height: auto !important;
+    min-height: calc(100vh - 48px) !important;
+    overflow: visible !important;
+    padding: 8px 10px 32px !important;
+  }
+  #maps-page {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    gap: 8px;
+  }
+  body:not(.maps-view) main {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Aba 01: Cabeçalho e Barra de Candidatos */
+  .map-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .map-heading-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .map-heading h1 {
+    font-size: 18px;
+    letter-spacing: -0.4px;
+  }
+  .map-heading .eyebrow {
+    font-size: 10px;
+  }
+  .map-toolbar {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .map-toolbar span#map-freshness {
+    font-size: 11px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .map-toolbar button#map-refresh {
+    padding: 4px 8px;
+    font-size: 11.5px;
+  }
+  .tabs button {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* Barra de Candidatos Responsiva (2 Linhas) */
+  .map-candidate-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    gap: 6px 8px;
+  }
+  .map-cand-side.lula {
+    order: 1;
+    min-width: 0;
+    flex: 1;
+    gap: 6px;
+  }
+  .map-cand-side.bolsonaro {
+    order: 2;
+    min-width: 0;
+    flex: 1;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .map-bar-center {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    flex-basis: 100%;
+    margin-top: 2px;
+    gap: 3px;
+  }
+  .cand-bar-photo {
+    width: 30px;
+    height: 30px;
+  }
+  .cand-bar-title {
+    font-size: 12px;
+  }
+  .cand-bar-title small {
+    font-size: 10.5px;
+  }
+  .cand-bar-pct {
+    font-size: 17px;
+  }
+  .cand-bar-votes {
+    font-size: 10.5px;
+  }
+  .map-bar-track {
+    height: 6px;
+  }
+  .map-bar-status {
+    font-size: 9px;
+  }
+
+  /* Layout do Mapa no Mobile (Coluna Única) */
+  .map-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    border-radius: 10px;
+    overflow: visible;
+  }
+  .map-canvas-wrap {
+    height: 330px;
+    min-height: 300px;
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .map-controls {
+    top: 8px;
+    left: 8px;
+  }
+  .map-controls button {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  .map-footer-bar {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    padding-top: 4px;
+  }
+  .heat-legend {
+    font-size: 11px;
+    gap: 8px;
+  }
+  .heat-gradient-wrap {
+    width: 140px;
+  }
+  .heat-gradient-wrap small {
+    font-size: 9.5px;
+  }
+  .map-caption {
+    font-size: 10px;
+    text-align: center;
+  }
+
+  /* Painel de Detalhes e Cidades no Mobile */
+  .map-detail {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+    border-left: 0;
+    padding: 14px 12px;
+  }
+  .map-candidate {
+    padding: 8px 10px;
+  }
+  .map-candidate-info > span {
+    font-size: 13px;
+  }
+  .map-candidate-info strong {
+    font-size: 16px;
+  }
+  .map-candidate b {
+    font-size: 12px;
+  }
+
+  /* Aba 02: Apuração no Mobile */
+  .edition {
+    font-size: 10px;
+  }
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 2px 0 4px;
+  }
+  .hero h1 {
+    font-size: 20px;
+    letter-spacing: -0.5px;
+  }
+  .hero h1 br.desktop {
+    display: none;
+  }
+  .hero p {
+    font-size: 12px;
+  }
+  .live-info {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+  .live-info p {
+    font-size: 11.5px;
+  }
+  .live-info button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .exterior-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .exterior-banner button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0;
+  }
+  .toolbar .tabs {
+    width: 100%;
+    justify-content: center;
+  }
+  .toolbar label {
+    width: 100%;
+    margin: 4px 0 2px;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .toolbar select {
+    max-width: 190px;
+  }
+  .toolbar button {
+    flex: 1 1 80px;
+    font-size: 11.5px;
+    padding: 5px 8px;
+    text-align: center;
+  }
+
+  .panel.scoreboard {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 12px 14px;
+  }
+  .section-top h2 {
+    font-size: 17px;
+  }
+  .candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .candidate + .candidate {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 10px;
+  }
+  .candidate-top {
+    gap: 10px;
+  }
+  .avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 17px;
+  }
+  .candidate h3 {
+    font-size: 17px;
+  }
+  .candidate-values {
+    margin: 4px 0 2px;
+  }
+  .candidate-values strong {
+    font-size: 32px;
+  }
+  .candidate-values b {
+    font-size: 13.5px;
+  }
+
+  .progress-label {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11.5px;
+  }
+  .score-footer {
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  /* Grid 2x2 para Métricas no Mobile */
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .metrics article {
+    padding: 8px 10px;
+  }
+  .metrics span {
+    font-size: 10.5px;
+  }
+  .metrics strong {
+    font-size: 18px;
+    margin: 2px 0 1px;
+  }
+  .metrics small {
+    font-size: 9.5px;
+  }
+
+  .columns {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .columns .panel {
+    height: auto;
+    padding: 12px 14px;
+  }
+}
+
