@@ -4,3 +4,6 @@ node_modules/
 .runtime/
 *.log
 .env
+
+.vercel
+.env*
