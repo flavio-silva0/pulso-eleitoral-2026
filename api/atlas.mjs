@@ -62,6 +62,8 @@ async function atlas() {
   return atlasPending;
 }
 
+export { atlas };
+
 export default async function handler(req, res) {
   try {
     const data = await atlas();

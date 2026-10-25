@@ -139,7 +139,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   </section>
  `);
 
- document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Apuração</a><a href="#curva">03 · 1º × 2º turno</a>';
+ document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Apuração</a><a href="#curva">03 · 1º × 2º turno</a><a href="#projecao">04 · Projeção</a>';
  document.querySelector('.columns').hidden=true;
  document.querySelector('.transparency').hidden=true;
  const root=document.querySelector('#maps-page'),canvas=document.querySelector('#heat-map'),tooltip=root.querySelector('#map-tooltip'),mapWrap=root.querySelector('.map-canvas-wrap');
@@ -180,7 +180,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  }
 
  function route(){
-  const show=location.hash!=='#painel'&&location.hash!=='#curva';
+  const show=location.hash!=='#painel'&&location.hash!=='#curva'&&location.hash!=='#projecao';
   document.body.classList.toggle('maps-view',show);
   root.hidden=!show;
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('current',a.hash===(show?'#mapas':location.hash)));
