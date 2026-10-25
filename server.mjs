@@ -3,7 +3,7 @@ import {readFile,mkdir,appendFile} from 'node:fs/promises';
 import {states,sourceUrl,normalize} from './lib/tse.mjs';
 import {getExterior,exteriorResult} from './lib/exterior.mjs';
 const cache=new Map(),pending=new Map();
-await mkdir('.runtime',{recursive:true});
+try{await mkdir('.runtime',{recursive:true});}catch{}
 async function getResult(uf,office){
  const key=`${office}:${uf}`,old=cache.get(key);
  if(old&&Date.now()-old.checkedAt<(old.error?120000:30000))return old;
@@ -13,7 +13,7 @@ async function getResult(uf,office){
  if(response.status===304&&old?.data){const v={...old,checkedAt:Date.now(),error:null};cache.set(key,v);return v;}
  if(!response.ok)throw Error(response.status===404?'Arquivo ainda não disponível para esta disputa.':`Fonte TSE indisponível (HTTP ${response.status}).`);
  const data=normalize(await response.json(),uf,office),history=[...(old?.history||[])];
- if(data.generation!==old?.data?.generation){history.push({at:Date.now(),generation:data.generation,progress:data.progress,candidates:data.candidates.map(c=>({number:c.number,votes:c.votes,percent:c.percent}))});await appendFile('.runtime/snapshots.jsonl',JSON.stringify({observedAt:new Date().toISOString(),...data})+'\n');}
+ if(data.generation!==old?.data?.generation){history.push({at:Date.now(),generation:data.generation,progress:data.progress,candidates:data.candidates.map(c=>({number:c.number,votes:c.votes,percent:c.percent}))});try{await appendFile('.runtime/snapshots.jsonl',JSON.stringify({observedAt:new Date().toISOString(),...data})+'\n');}catch{}}
  const v={data,checkedAt:Date.now(),etag:response.headers.get('etag'),error:null,history:history.slice(-240)};cache.set(key,v);return v;
  }catch(e){const v={...old,checkedAt:Date.now(),error:e.message};cache.set(key,v);return v;}})().finally(()=>pending.delete(key));pending.set(key,job);return job;
 }
@@ -40,4 +40,7 @@ const server=http.createServer(async(req,res)=>{try{
  res.setHeader('Content-Type',url.pathname.endsWith('.json')?'application/json':url.pathname.endsWith('.js')?'text/javascript; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.webp')?'image/webp':'text/html; charset=utf-8');
  res.setHeader('X-Content-Type-Options','nosniff');res.end(await readFile(new URL(`./public/${files[url.pathname]}`,import.meta.url)));
  }catch{res.writeHead(500);res.end('Erro interno');}});
-server.listen(Number(process.env.PORT||3000),'127.0.0.1',()=>console.log('Pulso Eleitoral: http://localhost:'+ (process.env.PORT||3000)));
+if(!process.env.VERCEL){
+ server.listen(Number(process.env.PORT||3000),()=>console.log('Pulso Eleitoral: http://localhost:'+ (process.env.PORT||3000)));
+}
+export default server;
