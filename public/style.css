@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Faustina:ital,wght@0,400;0,600;1,400&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root{
   --bg:#f8fafc;
@@ -47,7 +47,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
    ABA 01: MAPAS (BRASIL E MUNDO COM MAPA DE CALOR)
    ========================================================= */
 .maps-view main>:not(#maps-page){display:none!important}
-.maps-view footer,body:not(.maps-view) footer{display:none!important}
+.maps-view footer{display:none!important}
 
 #maps-page{display:flex;flex-direction:column;height:100%;min-height:0;flex:1}
 .map-heading{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px;flex-shrink:0;gap:12px;flex-wrap:nowrap}
@@ -56,31 +56,70 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .map-heading h1{font-family:Manrope,sans-serif;font-size:22px;letter-spacing:-0.6px;margin:0;font-weight:700;display:inline-block;color:var(--ink)}
 .map-heading h1 em{font-family:Georgia,serif;font-weight:400;color:var(--muted)}
 .map-toolbar{display:flex;align-items:center;gap:12px;margin-left:auto}
-.map-toolbar span#map-freshness{font-size:12px;color:var(--muted)}
+.map-toolbar span#map-freshness{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.map-toolbar span#map-freshness b{color:var(--ink);font-weight:700}
+.map-toolbar span#map-freshness small{font-size:11px;color:var(--muted)}
 .map-toolbar button#map-refresh{padding:5px 12px;font-size:12px;font-weight:600}
 
-/* Barra de Confronto dos Candidatos */
-.map-candidate-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#ffffff;border:1px solid var(--line);border-radius:10px;padding:6px 16px;margin-bottom:8px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
-.map-cand-side{display:flex;align-items:center;gap:10px;min-width:200px}
-.map-cand-side.lula{justify-content:flex-start}
-.map-cand-side.bolsonaro{justify-content:flex-end}
-.cand-bar-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2.5px solid currentColor;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.08)}
-.map-cand-side.lula .cand-bar-photo{border-color:#dc2626}
-.map-cand-side.bolsonaro .cand-bar-photo{border-color:#2563eb}
-.cand-bar-meta{display:flex;flex-direction:column;line-height:1.2}
-.cand-bar-meta.right{align-items:flex-end;text-align:right}
-.cand-bar-title{font-size:13.5px;font-weight:700;color:var(--ink)}
-.cand-bar-title small{font-size:12px;color:var(--muted);font-weight:500}
-.cand-bar-pct{font-family:Manrope,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.5px}
-.cand-bar-votes{font-size:12.5px;color:var(--muted);font-weight:500;white-space:nowrap}
-.map-bar-center{flex:1;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.map-bar-track{width:100%;height:8px;background:var(--soft);border-radius:5px;overflow:hidden;display:flex}
-.map-bar-fill-lula{background:#dc2626;height:100%;transition:width .6s ease}
-.map-bar-fill-bolsonaro{background:#2563eb;height:100%;transition:width .6s ease}
-.map-bar-status{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--muted);white-space:nowrap}
+/* Barra de Confronto dos Candidatos (Estilo Apuração 2026 / seuimposto.com) */
+.map-candidate-bar.rbanner{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;gap:16px;background:#111216;color:#fafaf9;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 16px 14px;margin-bottom:8px;flex-shrink:0;box-shadow:0 4px 18px rgba(0,0,0,0.22);overflow:hidden;box-sizing:border-box;width:100%;max-width:100%}
+.rb-face{display:flex;align-items:center;justify-content:center}
+.rb-photo{width:50px;height:50px;border-radius:8px;object-fit:cover;display:block}
+.rb-photo.lula{background:#dc2626;box-shadow:0 0 0 1.5px rgba(220,38,38,0.4)}
+.rb-photo.bolsonaro{background:#2563eb;box-shadow:0 0 0 1.5px rgba(37,99,235,0.4)}
+.rb-mid{display:flex;flex-direction:column;gap:6px;min-width:0;overflow:hidden}
+.rb-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;gap:12px}
+.rb-nm{display:flex;align-items:center;gap:8px;min-width:0;font-size:15.5px;font-weight:700;color:#fafaf9}
+.rb-nm.r{justify-content:flex-end;text-align:right}
+.rb-nm b{font-family:'DM Sans',sans-serif;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-party-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;line-height:1.2}
+.rb-party-tag.red{color:#ef4444;background:rgba(239,68,68,0.14)}
+.rb-party-tag.red .star{font-size:10px}
+.rb-party-tag.blue{color:#60a5fa;background:rgba(96,165,250,0.14)}
+.rb-head{margin:0;text-align:center;font-family:'Faustina',Georgia,'Times New Roman',serif;font-size:16.5px;font-weight:400;color:#e2e8f0;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-bar{position:relative;height:38px}
+.rb-track{position:absolute;inset:0;border-radius:7px;overflow:hidden;background:#1c1e24}
+.rb-seg{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-style:normal;transition:width .7s cubic-bezier(.2,.1,.8,.9);white-space:nowrap;overflow:hidden}
+.rb-seg.l{left:0;background:#dc2626;color:#ffffff;padding-left:12px;gap:8px;justify-content:flex-start}
+.rb-seg.r{right:0;background:#2563eb;color:#ffffff;padding-right:12px;gap:8px;justify-content:flex-end}
+.rb-pct-val{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.4px;font-variant-numeric:tabular-nums;line-height:1}
+.rb-pct-val small{font-size:13px;font-weight:700;margin-left:1px}
+.rb-v{font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:500;opacity:.82;white-space:nowrap}
+.rb-seg.tight .rb-v{display:none}
+
+/* Costura brilhante com fogo */
+.rb-fire{position:absolute;top:0;bottom:0;width:0;pointer-events:none;z-index:3;transition:left .7s cubic-bezier(.2,.1,.8,.9)}
+.rb-fire:before{content:"";position:absolute;top:0;bottom:0;left:-1.5px;width:3px;border-radius:2px;background:linear-gradient(#fff6e3,#ffd9a0 45%,#ffb35c);box-shadow:0 0 6px 1px rgba(255,190,110,0.75),0 0 16px 4px rgba(255,140,60,0.35)}
+.rb-fire:after{content:"";position:absolute;top:-6px;bottom:-6px;left:-18px;width:36px;background:radial-gradient(closest-side,rgba(255,200,130,0.3),rgba(255,140,60,0.1) 60%,transparent)}
+.rb-fire i{position:absolute;bottom:6px;left:-1px;width:2px;height:2px;border-radius:50%;background:#ffe7bf;box-shadow:0 0 4px 1px #ffaa5ad9;opacity:0}
+@media (prefers-reduced-motion:no-preference){
+  .rb-fire:before{animation:seam 1.7s ease-in-out infinite}
+  .rb-fire:after{animation:heat 2.6s ease-in-out infinite}
+  .rb-fire i{animation:spark 2.1s cubic-bezier(.2,.6,.4,1) infinite}
+  .rb-fire i:nth-child(2){--dx:-5px;animation-delay:.42s;animation-duration:1.8s;bottom:12px}
+  .rb-fire i:nth-child(3){--dx:4px;animation-delay:.9s;animation-duration:2.4s;bottom:3px}
+  .rb-fire i:nth-child(4){--dx:-3px;animation-delay:1.35s;animation-duration:2s;bottom:16px}
+  .rb-fire i:nth-child(5){--dx:6px;animation-delay:1.7s;animation-duration:2.3s;bottom:9px}
+}
+@keyframes seam{0%,100%{opacity:.78}38%{opacity:1}62%{opacity:.88}}
+@keyframes heat{0%,100%{opacity:.7;transform:scaleY(.94)}50%{opacity:1;transform:scaleY(1.06)}}
+@keyframes spark{0%{opacity:0;transform:translate(0) scale(1)}12%{opacity:1}100%{opacity:0;transform:translate(var(--dx,3px),-34px) scale(.4)}}
+
+/* Linha e pílula dos 50% */
+.rb-50{position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;margin-left:-1px;background:#ffffff;box-shadow:0 0 4px rgba(0,0,0,0.6);z-index:4}
+.rb-50 em{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:2px 5px;border-radius:4px;background:#000000;box-shadow:0 0 0 1px rgba(255,255,255,0.3);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;font-style:normal;color:#ffffff;white-space:nowrap}
+
+/* Rodapé com apuração e abrangência */
+.rb-bottom-info{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11.5px;color:#94a3b8;padding-top:1px}
+.rb-apurado-info b{color:#10b981;font-weight:700}
+.rb-scope-badge{font-size:10.5px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#cbd5e1;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
+
+/* Barra inferior de progresso geral */
+.rb-foot{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,0.08)}
+.rb-foot>i{display:block;height:100%;background:#10b981;transition:width .7s cubic-bezier(.2,.1,.8,.9)}
 
 /* Layout do Mapa */
-.map-layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#ffffff;height:100%;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
+.map-layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 380px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#ffffff;height:100%;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
 .map-canvas-wrap{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;padding:10px 14px 8px;background:#fbfcfd}
 .map-controls{position:absolute;top:12px;left:16px;z-index:2;display:flex;gap:5px}
 .map-controls button{background:#ffffff;padding:6px 11px;font-size:12px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-radius:6px}
@@ -94,25 +133,98 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .heat-map .map-selected{stroke:var(--ink)!important;stroke-width:2.5px!important;filter:drop-shadow(0 2px 8px rgba(15,23,42,0.22));outline:none}
 .heat-map text{font:8px 'DM Sans',sans-serif;fill:var(--ink);pointer-events:none}
 
-.map-footer-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:6px;flex-shrink:0;border-top:1px solid var(--line)}
-.heat-legend{display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:600}
-.heat-gradient-wrap{display:flex;flex-direction:column;align-items:center;width:180px}
-.heat-gradient{width:100%;height:8px;background:linear-gradient(90deg,#dc2626,#fca5a5,#f1f5f9,#93c5fd,#2563eb);border-radius:4px}
-.heat-gradient-wrap small{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;font-weight:500}
-.map-caption{font-size:11.5px;color:var(--muted);margin:0;text-align:right;white-space:nowrap}
+.map-footer-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:8px;flex-shrink:0;border-top:1px solid var(--line)}
+.heat-legend{display:flex;flex-direction:column;gap:4px;min-width:280px}
+.heat-legend-cands{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:700}
+.heat-legend-mid{font-size:11px;color:var(--muted);font-weight:500}
+.heat-gradient-wrap{display:flex;flex-direction:column;gap:3px;width:100%}
+.heat-gradient{width:100%;height:8px;background:linear-gradient(90deg,#dc2626 0%,#fca5a5 35%,#f1f5f9 50%,#93c5fd 65%,#2563eb 100%);border-radius:4px}
+.heat-gradient-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:600}
+.map-caption{font-size:11.5px;color:var(--muted);margin:0;text-align:right}
 
 /* Painel Lateral de Detalhes */
 .map-detail{height:100%;min-height:0;overflow-y:auto;padding:16px 18px;border-left:1px solid var(--line);box-sizing:border-box;background:#ffffff}
 .map-detail::-webkit-scrollbar{width:5px}
 .map-detail::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:5px}
-.map-detail .eyebrow{font-size:11px;letter-spacing:1.2px;font-weight:700;color:var(--muted);text-transform:uppercase}
-.map-detail h2{font-family:Manrope,sans-serif;font-size:20px;letter-spacing:-0.5px;margin:4px 0 12px;font-weight:700;color:var(--ink)}
-.map-detail p{font-size:13px;color:var(--muted);margin:4px 0;line-height:1.4}
-.map-detail .map-diff{font-size:13px;font-weight:600;color:var(--ink);margin:8px 0 2px}
-.map-detail .map-sections{font-size:12.5px;color:var(--muted);margin:0 0 10px}
-.map-detail h3{font-size:14px;font-weight:700;margin:14px 0 8px;color:var(--ink)}
-.regional-legend{display:flex;gap:14px;font-size:12.5px;font-weight:600;margin-bottom:12px;align-items:center}
 
+.detail-header{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.back-countries{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);background:var(--soft);border:1px solid var(--line);padding:5px 10px;border-radius:6px;cursor:pointer;align-self:flex-start;font-weight:600;transition:all .2s}
+.back-countries:hover{background:var(--ink);color:#ffffff;border-color:var(--ink)}
+.detail-title-wrap{display:flex;flex-direction:column;gap:2px}
+.detail-title-wrap .eyebrow{font-size:10.5px;letter-spacing:1px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.detail-title-wrap h2{font-family:Manrope,sans-serif;font-size:20px;letter-spacing:-0.5px;margin:0;font-weight:800;color:var(--ink)}
+
+.map-candidates-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.map-cand-box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,0.02)}
+.map-cand-box.red{border-top:3.5px solid #dc2626}
+.map-cand-box.blue{border-top:3.5px solid #2563eb}
+.map-cand-box-top{display:flex;align-items:center;gap:8px}
+.cand-box-id{display:flex;flex-direction:column;line-height:1.2}
+.cand-box-id strong{font-size:13.5px;font-weight:700;color:var(--ink)}
+.cand-box-id small{font-size:11px;color:var(--muted);font-weight:600}
+.cand-box-stats{display:flex;justify-content:space-between;align-items:baseline;margin-top:2px}
+.cand-box-pct{font-family:Manrope,sans-serif;font-size:19px;font-weight:800;line-height:1}
+.cand-box-votes{font-size:11.5px;color:var(--muted);font-weight:500}
+
+.state-summary-card{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.summary-line{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:8px}
+.summary-line span{color:var(--muted);font-weight:500}
+.summary-line strong{color:var(--ink);font-weight:700;font-size:12.5px;text-align:right}
+
+.btn-state-panel{width:100%;padding:8px 12px;font-size:12px;font-weight:600;background:#ffffff;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink);text-align:center;margin-bottom:12px;transition:background .2s}
+.btn-state-panel:hover{background:var(--soft)}
+.map-warning-box{padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;font-size:12px;margin-bottom:10px}
+
+/* Cidades do Estado */
+.state-cities-section{margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+.state-cities-header{margin-bottom:10px}
+.state-cities-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.state-cities-title-row h3{font-size:14px;margin:0;font-weight:700;color:var(--ink)}
+.cities-count-badge{font-size:11px;color:var(--muted);background:var(--soft);padding:3px 8px;border-radius:12px;font-weight:500}
+.cities-count-badge strong.green-text{color:#16a34a;font-weight:700}
+.cities-filter-tabs{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.city-filter-btn{padding:5px 10px;font-size:11.5px;border-radius:6px;background:var(--soft);border:1px solid transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s}
+.city-filter-btn.active{background:#ffffff;border-color:var(--line);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.city-refresh-btn{margin-left:auto;padding:5px 9px;font-size:11.5px;border-radius:6px;background:#ffffff;border:1px solid var(--line);color:var(--muted);cursor:pointer;font-weight:600}
+.city-refresh-btn:hover{color:var(--ink);background:var(--soft)}
+.city-search-wrap{margin-bottom:8px}
+.city-search-input{width:100%;padding:8px 10px;font-size:12.5px;background:var(--soft);border:1px solid var(--line);border-radius:6px;color:var(--ink);outline:none;box-sizing:border-box}
+.city-search-input:focus{border-color:var(--ink);background:#ffffff}
+
+.city-list{display:flex;flex-direction:column;gap:6px}
+.mun-card{background:#ffffff;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;transition:border-color .2s,box-shadow .2s}
+.mun-card:hover{border-color:#94a3b8;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.mun-card.counted.lula-lead{border-left:4px solid #dc2626}
+.mun-card.counted.bolsonaro-lead{border-left:4px solid #2563eb}
+.mun-card.waiting{background:#fafafa;border:1px dashed var(--line);opacity:0.9}
+
+.mun-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:4px}
+.mun-name-wrap{display:flex;align-items:center;gap:6px}
+.mun-name{font-size:13px;color:var(--ink);font-weight:700}
+.mun-badge-live{font-size:10.5px;color:#15803d;background:#dcfce7;padding:1px 6px;border-radius:4px;font-weight:700}
+.mun-badge-waiting{font-size:10.5px;color:var(--muted);background:var(--soft);padding:1px 6px;border-radius:4px}
+.mun-total-valid{font-size:11.5px;color:var(--muted)}
+.mun-bar{width:100%;height:5px;background:var(--soft);border-radius:3px;overflow:hidden;display:flex;margin:4px 0 6px}
+.mun-bar-empty{width:100%;height:3px;background:var(--soft);border-radius:2px;margin:4px 0 5px}
+.mun-fill-red{background:#dc2626;height:100%;transition:width .4s ease}
+.mun-fill-blue{background:#2563eb;height:100%;transition:width .4s ease}
+.mun-cand-row{display:flex;justify-content:space-between;align-items:center;font-size:11.5px}
+.mun-cand-item{display:inline-flex;align-items:center;gap:4px}
+.mun-cand-item strong{font-weight:700}
+.mun-waiting-text{font-size:11px;color:var(--muted)}
+
+.cities-loading{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 12px;color:var(--muted);font-size:12px;text-align:center}
+.cities-loading .spinner{width:22px;height:22px;border:2.5px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cities-empty{padding:18px 12px;text-align:center;color:var(--muted);font-size:12px}
+.cities-empty p{margin:0 0 4px;font-weight:600}
+
+.btn-more-cities{width:100%;padding:8px 12px;font-size:12px;font-weight:600;background:var(--soft);border:1px solid var(--line);border-radius:6px;color:var(--ink);cursor:pointer;margin-top:8px}
+.btn-more-cities:hover{background:#e2e8f0}
+
+/* Votos no Exterior */
+.regional-legend{display:flex;gap:14px;font-size:12.5px;font-weight:600;margin-bottom:12px;align-items:center}
+.region-cards-list{display:flex;flex-direction:column;gap:6px}
 .region-card{padding:10px 0;border-bottom:1px solid var(--line)}
 .region-heading{display:flex;justify-content:space-between;font-size:13px}
 .region-heading b{font-weight:700}
@@ -132,60 +244,362 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 .exterior-region b,.exterior-region small{grid-column:1/-1}
 .exterior-region small{font-size:11px;color:var(--muted)}
 
-.map-total strong{display:block;font-family:Manrope;font-size:26px;margin-top:12px;letter-spacing:-1px;color:var(--ink)}
+.map-total strong{display:block;font-family:Manrope;font-size:26px;margin-top:8px;letter-spacing:-1px;color:var(--ink)}
 .map-total span{font-size:12px;color:var(--muted)}
+.map-total small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
 .map-country-list{display:grid;gap:0;margin-top:10px}
-.map-country-list button{border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:9px 0;background:transparent}
+.map-country-list button{border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;padding:9px 0;background:transparent}
 .map-country-list button:hover{background:var(--soft)}
-.map-country-list button>span:last-child b{display:block;font-size:11.5px;margin:1px 0}
-
-.map-candidate{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px;background:var(--card)}
-.map-candidate-info{display:flex;flex-direction:column;flex:1}
-.map-candidate-info>span{font-weight:700;font-size:14px}
-.map-candidate-info small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px;font-weight:500}
-.map-candidate-info strong{font-size:18px;margin-top:2px;font-weight:800}
-.map-candidate b{font-size:13px;font-weight:600;margin-left:auto}
+.country-votes b{display:block;font-size:11.5px;margin:1px 0}
+.exterior-cities-section{margin-top:10px}
+.exterior-city-row{display:grid;grid-template-columns:1fr 1fr;gap:4px;border-bottom:1px solid var(--line);padding:7px 0;font-size:12px}
+.exterior-city-row b{grid-column:1/-1;font-size:13px}
+.exterior-city-row small{grid-column:1/-1;color:var(--muted);font-size:11px}
 
 .red strong,.red-text{color:#dc2626}
 .blue strong,.blue-text{color:#2563eb}
+.footnote{font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.4}
+.map-bottom-bar, footer.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0 2px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  width: 100%;
+  box-sizing: border-box;
+}
 
-.back-countries{font-size:12px;margin-bottom:12px;border:0;padding:0;color:var(--muted);cursor:pointer;background:transparent;font-weight:600}
-.back-countries:hover{color:var(--ink);text-decoration:underline}
-#map-open{width:100%;margin:10px 0;padding:8px 12px;font-size:12.5px;font-weight:600;background:var(--soft);border:1px solid var(--line);border-radius:6px;text-align:center}
-#map-open:hover{background:#e2e8f0}
+.bottom-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+  color: #15803d;
+  padding: 3px 9px;
+  border-radius: 14px;
+  font-weight: 500;
+  font-size: 11.5px;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  user-select: none;
+}
 
-.city-results>div{display:grid;grid-template-columns:1fr 1fr;gap:4px;border-bottom:1px solid var(--line);padding:7px 0;font-size:12px}
-.city-results b{grid-column:1/-1;font-size:13px}
-.city-results small{grid-column:1/-1;color:var(--muted);font-size:11px}
+.bottom-live-badge strong {
+  font-family: Manrope, sans-serif;
+  font-weight: 800;
+  color: #14532d;
+  font-size: 12.5px;
+}
 
-/* Seção de Cidades Brasileiras */
-.state-cities-section{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-.state-cities-header{margin-bottom:10px}
-.state-cities-header h3{font-size:13.5px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
-.state-cities-header h3 small{color:var(--muted);font-weight:normal;font-size:12px}
-.city-search-input{width:100%;padding:8px 10px;font-size:12.5px;background:var(--soft);border:1px solid var(--line);border-radius:6px;color:var(--ink);outline:none;box-sizing:border-box}
-.city-search-input:focus{border-color:var(--ink);background:#ffffff}
-.city-list{display:flex;flex-direction:column;gap:6px}
-.mun-card{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12px;transition:border-color .2s,box-shadow .2s}
-.mun-card:hover{border-color:#94a3b8;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.mun-card.lula-lead{border-left:3.5px solid #dc2626}
-.mun-card.bolsonaro-lead{border-left:3.5px solid #2563eb}
-.mun-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.mun-name{font-size:13px;color:var(--ink);font-weight:700}
-.mun-valid{font-size:11.5px;color:var(--muted)}
-.mun-bar{width:100%;height:4px;background:var(--soft);border-radius:2px;overflow:hidden;display:flex;margin-bottom:4px}
-.mun-fill-red{background:#dc2626;height:100%}
-.mun-fill-blue{background:#2563eb;height:100%}
-.mun-votes{display:flex;justify-content:space-between;align-items:center;font-size:11.5px}
-.mun-votes span{display:inline-flex;align-items:center;gap:4px}
-.btn-more-cities{width:100%;padding:8px 12px;font-size:12px;font-weight:600;background:var(--soft);border:1px solid var(--line);border-radius:6px;color:var(--ink);cursor:pointer;margin-top:6px}
-.btn-more-cities:hover{background:#e2e8f0}
-.map-source{font-size:11.5px;color:var(--muted);line-height:1.4;padding:4px 0 0;margin:0;flex-shrink:0}
-.map-source a{text-decoration:underline}
+.live-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6);
+  animation: pulse-dot 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.bottom-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.bottom-update strong {
+  font-family: Manrope, sans-serif;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.bottom-update .tz-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.map-source, .footer-source {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.map-source a, .footer-source a {
+  text-decoration: underline;
+}
+
+/* =========================================================
+   POPUPS E TOOLTIPS VISUAIS DOS MAPAS (BRASIL E EXTERIOR)
+   ========================================================= */
+.map-tooltip {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 12px;
+  padding: 11px 13px;
+  width: 290px;
+  max-width: calc(100% - 16px);
+  box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.22), 0 4px 10px -2px rgba(15, 23, 42, 0.08);
+  color: var(--ink);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.35;
+  transition: opacity 0.12s ease;
+  user-select: none;
+}
+
+.map-tooltip[hidden] {
+  display: none !important;
+}
+
+.tip-header {
+  margin-bottom: 7px;
+}
+
+.tip-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tip-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tip-uf-pill {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.tip-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tip-badge.badge-red {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.tip-badge.badge-blue {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.tip-badge.badge-gray {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.tip-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tip-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  margin: 7px 0 8px;
+}
+
+.tip-track-lula {
+  background: #dc2626;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.tip-track-bolsonaro {
+  background: #2563eb;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.tip-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tip-candidate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--soft);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tip-candidate.tip-lead {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tip-candidate.tip-lead.tip-lead-lula {
+  border-left: 3.5px solid #dc2626;
+}
+
+.tip-candidate.tip-lead.tip-lead-bolsonaro {
+  border-left: 3.5px solid #2563eb;
+}
+
+.tip-photo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tip-photo.tip-photo-lula {
+  border: 1.5px solid #dc2626;
+}
+
+.tip-photo.tip-photo-bolsonaro {
+  border: 1.5px solid #2563eb;
+}
+
+.tip-candidate-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.tip-cand-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tip-cand-name small {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 3px;
+}
+
+.tip-cand-votes {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.tip-cand-pct {
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  flex-shrink: 0;
+}
+
+.tip-empty-notice {
+  background: var(--soft);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin: 6px 0;
+  border: 1px dashed var(--line);
+}
+
+.tip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.tip-footer b {
+  color: var(--ink);
+}
+
+.tip-action {
+  color: #334155;
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+.brazil-map-wrap {
+  position: relative;
+}
 
 /* Fotos e Avatares */
 .legend-photo{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;border:1.5px solid currentColor;display:inline-block}
-.detail-photo{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid currentColor;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.08)}
+.detail-photo{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid currentColor;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.08)}
 .mini-photo{width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px;border:1px solid currentColor;display:inline-block}
 .banner-candidate{display:inline-flex;align-items:center;gap:3px}
 
@@ -219,7 +633,7 @@ body:not(.maps-view) main{display:flex;flex-direction:column;height:100%;min-hei
 .tabs button{border:0;padding:5px 12px;border-radius:6px;font-size:13px;font-weight:600;background:transparent}
 .tabs .selected{background:#ffffff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .toolbar label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-right:auto;margin-left:8px;font-weight:500}
-select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12.5px;max-width:180px}
+select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12.5px;max-width:220px}
 
 .notice{margin:4px 0 6px;padding:6px 14px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;background:var(--soft);line-height:1.4;flex-shrink:0}
 .notice.error{border-color:#fca5a5;background:#fef2f2;color:#991b1b}
@@ -333,8 +747,9 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
   }
   .map-heading-title {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
   }
   .map-heading h1 {
     font-size: 18px;
@@ -345,18 +760,27 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
   }
   .map-toolbar {
     width: 100%;
+    max-width: 100%;
     margin-left: 0;
     justify-content: space-between;
+    align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
   }
   .map-toolbar span#map-freshness {
     font-size: 11px;
-    max-width: 180px;
+    flex: 1 1 100%;
+    order: 3;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .map-toolbar .tabs {
+    order: 1;
+  }
   .map-toolbar button#map-refresh {
+    order: 2;
     padding: 4px 8px;
     font-size: 11.5px;
   }
@@ -365,57 +789,70 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
     font-size: 12px;
   }
 
-  /* Barra de Candidatos Responsiva (2 Linhas) */
-  .map-candidate-bar {
+  /* Barra de Candidatos Responsiva */
+  .map-candidate-bar.rbanner {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    gap: 8px;
+    padding: 8px 8px 10px;
+    margin-bottom: 6px;
+  }
+  .rb-photo {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+  }
+  .rb-top {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    gap: 6px 8px;
+    align-items: center;
   }
-  .map-cand-side.lula {
-    order: 1;
-    min-width: 0;
-    flex: 1;
-    gap: 6px;
+  .rb-head {
+    display: none;
   }
-  .map-cand-side.bolsonaro {
-    order: 2;
-    min-width: 0;
-    flex: 1;
-    gap: 6px;
-    justify-content: flex-end;
+  .rb-nm {
+    font-size: 13px;
+    gap: 5px;
   }
-  .map-bar-center {
-    order: 3;
-    width: 100%;
-    max-width: 100%;
-    flex-basis: 100%;
-    margin-top: 2px;
-    gap: 3px;
+  .rb-party-tag {
+    font-size: 10px;
+    padding: 1px 4px;
   }
-  .cand-bar-photo {
-    width: 30px;
+  .rb-pct-val {
+    font-size: 14.5px;
+  }
+  .rb-pct-val small {
+    font-size: 11px;
+  }
+  .rb-v {
+    display: none;
+  }
+  .rb-bar {
     height: 30px;
   }
-  .cand-bar-title {
-    font-size: 12px;
+  .rb-seg.l {
+    padding-left: 8px;
   }
-  .cand-bar-title small {
-    font-size: 10.5px;
+  .rb-seg.r {
+    padding-right: 8px;
   }
-  .cand-bar-pct {
-    font-size: 17px;
+  .rb-bottom-info {
+    font-size: 10px;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 0;
+    overflow: hidden;
   }
-  .cand-bar-votes {
-    font-size: 10.5px;
+  .rb-apurado-info {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
-  .map-bar-track {
-    height: 6px;
-  }
-  .map-bar-status {
-    font-size: 9px;
+  .rb-scope-badge {
+    font-size: 8.5px;
+    padding: 1px 4px;
+    white-space: nowrap;
   }
 
   /* Layout do Mapa no Mobile (Coluna Única) */
@@ -443,22 +880,26 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
   }
   .map-footer-bar {
     flex-direction: column;
-    gap: 4px;
-    align-items: center;
-    padding-top: 4px;
+    align-items: stretch;
+    gap: 6px;
+    padding-top: 6px;
   }
   .heat-legend {
+    width: 100%;
+    min-width: 0;
+    gap: 3px;
+  }
+  .heat-legend-cands {
     font-size: 11px;
-    gap: 8px;
   }
   .heat-gradient-wrap {
-    width: 140px;
+    width: 100%;
   }
-  .heat-gradient-wrap small {
-    font-size: 9.5px;
+  .heat-gradient-labels {
+    font-size: 9px;
   }
   .map-caption {
-    font-size: 10px;
+    font-size: 9.5px;
     text-align: center;
   }
 
@@ -468,19 +909,51 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
     max-height: none;
     overflow-y: visible;
     border-left: 0;
-    padding: 14px 12px;
+    padding: 14px 10px;
   }
-  .map-candidate {
-    padding: 8px 10px;
+  .detail-header {
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
   }
-  .map-candidate-info > span {
-    font-size: 13px;
+  .back-countries {
+    padding: 5px 9px;
+    font-size: 11.5px;
   }
-  .map-candidate-info strong {
+  .detail-title-wrap .eyebrow {
+    font-size: 9.5px;
+  }
+  .detail-title-wrap h2 {
+    font-size: 18px;
+  }
+  .map-candidates-grid {
+    gap: 6px;
+  }
+  .map-cand-box {
+    padding: 8px;
+    gap: 6px;
+  }
+  .cand-box-id strong {
+    font-size: 12.5px;
+  }
+  .cand-box-id small {
+    font-size: 10px;
+  }
+  .cand-box-pct {
     font-size: 16px;
   }
-  .map-candidate b {
-    font-size: 12px;
+  .cand-box-votes {
+    font-size: 10px;
+  }
+  .state-summary-card {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .summary-line {
+    font-size: 11px;
+  }
+  .summary-line strong {
+    font-size: 11.5px;
   }
 
   /* Aba 02: Apuração no Mobile */
@@ -544,7 +1017,7 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
     font-size: 12px;
   }
   .toolbar select {
-    max-width: 190px;
+    max-width: 220px;
   }
   .toolbar button {
     flex: 1 1 80px;
@@ -633,6 +1106,24 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
   .columns .panel {
     height: auto;
     padding: 12px 14px;
+  }
+
+  .map-bottom-bar, footer.app-footer {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 6px;
+    margin-top: 10px;
+    text-align: center;
+  }
+  .bottom-update {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .map-source, .footer-source {
+    text-align: center;
+    white-space: normal;
   }
 }
 

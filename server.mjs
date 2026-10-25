@@ -1,7 +1,9 @@
 import http from 'node:http';
 import {readFile,mkdir,appendFile} from 'node:fs/promises';
 import {states,sourceUrl,normalize} from './lib/tse.mjs';
-import {getExterior,exteriorResult} from './lib/exterior.mjs';
+import {getExterior,exteriorResult,combineBrasilAndExterior} from './lib/exterior.mjs';
+import {getLiveCities} from './api/cities.mjs';
+import {getPresenceData} from './lib/presence.mjs';
 const cache=new Map(),pending=new Map();
 try{await mkdir('.runtime',{recursive:true});}catch{}
 async function getResult(uf,office){
@@ -26,16 +28,36 @@ async function atlas(){
 }
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
+ if(url.pathname==='/api/presence'){const id=url.searchParams.get('id')||req.socket.remoteAddress||'client';res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');return res.end(JSON.stringify(getPresenceData(id)));}
  if(url.pathname==='/api/exterior'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getExterior()));}
  if(url.pathname==='/api/atlas'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await atlas()));}
  if(url.pathname==='/api/results'){
  const uf=(url.searchParams.get('uf')||'BR').toUpperCase(),office=url.searchParams.get('office')||'presidente';
+ if(uf==='TODOS'){
+  if(office!=='presidente'){res.writeHead(400,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Seleção inválida'}));}
+  const brRes=await getResult('BR','presidente');
+  const zzRes=await getResult('ZZ','presidente');
+  const feed=await getExterior();
+  const combined=combineBrasilAndExterior(brRes.data,feed.data,zzRes.data);
+  const key='presidente:TODOS';
+  const old=cache.get(key);
+  const history=[...(old?.history||[])];
+  if(combined&&combined.generation!==old?.data?.generation){
+   history.push({at:Date.now(),generation:combined.generation,progress:combined.progress,candidates:combined.candidates.map(c=>({number:c.number,votes:c.votes,percent:c.percent}))});
+   try{await appendFile('.runtime/snapshots.jsonl',JSON.stringify({observedAt:new Date().toISOString(),...combined})+'\n');}catch{}
+  }
+  const v={data:combined,checkedAt:Math.max(brRes.checkedAt||0,feed.checkedAt||0),error:brRes.error||feed.error||null,history:history.slice(-240),note:'Totalização do Brasil somada aos boletins de urna apurados no exterior.'};
+  cache.set(key,v);
+  res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+  return res.end(JSON.stringify(v));
+ }
  try{sourceUrl(uf,office)}catch{res.writeHead(400,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Seleção inválida'}));}
  let result=await getResult(uf,office);
  if(uf==='ZZ'&&office==='presidente'&&!(result.data?.counted>0)){const feed=await getExterior();if(feed.data){result={...result,data:exteriorResult(result.data,feed.data),officialData:result.data,checkedAt:feed.checkedAt,error:feed.error,history:[],note:'Contagem de boletins do exterior agregada pelo seuimposto.com; ainda não é a totalização oficial. Não somada ao placar nacional.'};}}
  res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify({...result,etag:undefined}));
  }
  if(url.pathname==='/api/states'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(states));}
+  if(url.pathname==='/api/cities'){const uf=(url.searchParams.get('uf')||'SP').toUpperCase();res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await getLiveCities(uf)));}
  if(!files[url.pathname]){res.writeHead(404);return res.end('Não encontrado');}
  res.setHeader('Content-Type',url.pathname.endsWith('.json')?'application/json':url.pathname.endsWith('.js')?'text/javascript; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.webp')?'image/webp':'text/html; charset=utf-8');
  res.setHeader('X-Content-Type-Options','nosniff');res.end(await readFile(new URL(`./public/${files[url.pathname]}`,import.meta.url)));

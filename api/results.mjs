@@ -1,5 +1,5 @@
 import {states, sourceUrl, normalize} from '../lib/tse.mjs';
-import {getExterior, exteriorResult} from '../lib/exterior.mjs';
+import {getExterior, exteriorResult, combineBrasilAndExterior} from '../lib/exterior.mjs';
 
 const cache = new Map(), pending = new Map();
 
@@ -49,6 +49,41 @@ export default async function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
     const uf = (url.searchParams.get('uf') || 'BR').toUpperCase();
     const office = url.searchParams.get('office') || 'presidente';
+
+    if (uf === 'TODOS') {
+      if (office !== 'presidente') {
+        res.writeHead(400, {'Content-Type': 'application/json'});
+        return res.end(JSON.stringify({error: 'Seleção inválida'}));
+      }
+      const brRes = await getResult('BR', 'presidente');
+      const zzRes = await getResult('ZZ', 'presidente');
+      const feed = await getExterior();
+      const combined = combineBrasilAndExterior(brRes.data, feed.data, zzRes.data);
+      const key = 'presidente:TODOS';
+      const old = cache.get(key);
+      const history = [...(old?.history || [])];
+      if (combined && combined.generation !== old?.data?.generation) {
+        history.push({
+          at: Date.now(),
+          generation: combined.generation,
+          progress: combined.progress,
+          candidates: combined.candidates.map(c => ({number: c.number, votes: c.votes, percent: c.percent}))
+        });
+      }
+      const v = {
+        data: combined,
+        checkedAt: Math.max(brRes.checkedAt || 0, feed.checkedAt || 0),
+        error: brRes.error || feed.error || null,
+        history: history.slice(-240),
+        note: 'Totalização do Brasil somada aos boletins de urna apurados no exterior.'
+      };
+      cache.set(key, v);
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+      return res.end(JSON.stringify(v));
+    }
 
     try {
       sourceUrl(uf, office);
