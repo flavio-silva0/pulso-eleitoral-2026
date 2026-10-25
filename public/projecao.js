@@ -1,6 +1,6 @@
 // Aba 04 · Projeção Estatística ao Vivo do Segundo Turno Presidencial.
-// Reproduz o mostrador de velocímetro (pt-dial), os 4 cartões comparativos (ptb),
-// a barra hachurada de margem de erro (pt-mg-barra) e o motor Logit Swing Municipal.
+// Mostrador velocímetro (pt-dial), 4 cartões comparativos (ptb), barra hachurada
+// de margem de erro (pt-mg-barra) e motor Logit Swing Municipal integrado à identidade Pulso Eleitoral.
 const $ = s => document.querySelector(s);
 const nf = d => new Intl.NumberFormat('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d});
 const N0 = new Intl.NumberFormat('pt-BR');
@@ -16,7 +16,8 @@ const state = {
   data: null,
   loading: false,
   error: null,
-  hoverPoint: null
+  hoverPoint: null,
+  nextRefreshSec: 5
 };
 
 try {
@@ -57,6 +58,39 @@ function Gf(f0, f1, rIn, rOut) {
 }
 const cp = pos => (Math.max(0, Math.min(1, pos)) - 0.5) * 180;
 
+// Tremor ao vivo da agulha (proporcional à incerteza, estilo Eg do ApuraLogo)
+let tremorTimer = null;
+let tremorSpec = null;
+
+function randNormal() {
+  let u = 0;
+  while (u === 0) u = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * Math.random());
+}
+
+function updateNeedleTremorSpec(p) {
+  const div = p?.div || {};
+  const s = div.s != null ? div.s : (p?.flavioPct ?? 50);
+  const loS = div.loS ?? p?.ci95?.flavioMin ?? 45;
+  const hiS = div.hiS ?? p?.ci95?.flavioMax ?? 55;
+  const tremor = div.tremor !== false && (hiS - loS) > 0.05;
+  tremorSpec = { s, loS, hiS, tremor };
+
+  if (!tremorTimer) {
+    tremorTimer = setInterval(() => {
+      if (document.hidden || !active() || !tremorSpec?.tremor) return;
+      if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const needle = document.querySelector('#pj-hero .pt-agulha');
+      if (!needle) return;
+      const span = Math.max(0.1, tremorSpec.hiS - tremorSpec.loS);
+      const amp = Math.max(0.02, 0.05 * span);
+      const jitter = Math.max(-1, Math.min(1, randNormal() / 2));
+      const pos = (tremorSpec.s + amp * jitter) / 100;
+      needle.style.transform = `rotate(${cp(pos).toFixed(2)}deg)`;
+    }, 700);
+  }
+}
+
 function inject() {
   const html = `
   <section id="projecao-page" class="projecao-page" hidden aria-labelledby="pj-title">
@@ -68,40 +102,44 @@ function inject() {
     </div>
     <div class="pj-controls">
      <div class="pj-seg" role="group" aria-label="Método de projeção">
-      <button data-pj-m="logit" title="Regressão ponderada em escala logit sobre os municípios apurados com variância clusterizada (modelo ApuraLogo)">Logit Municipal</button>
+      <button data-pj-m="logit" title="Regressão ponderada em escala logit sobre os municípios apurados com variância clusterizada">Logit Municipal</button>
       <button data-pj-m="bayesian" title="Modelo estratificado por UF com ajuste de swing e encolhimento Bayesiano">Estratificado UF</button>
       <button data-pj-m="t1_remainder" title="Aplica o resultado exato do 1º turno aos votos ainda não apurados">1º Turno no restante</button>
       <button data-pj-m="direct" title="Extrapola a proporção atual observada em cada UF">Extrapolação direta</button>
      </div>
-     <button id="pj-refresh-btn" class="pj-refresh-btn" title="Atualizar projeção agora">↻ Atualizar</button>
+     <button id="pj-refresh-btn" class="pj-refresh-btn" title="Atualizar projeção agora">↻ Atualizar <small id="pj-countdown">5s</small></button>
     </div>
    </div>
 
-   <!-- Card Velocímetro Principal (idêntico ao mostrador ApuraLogo) -->
-   <div id="pj-hero" class="pj-hero">
-    <div class="pj-loading">Calculando projeção ao vivo…</div>
-   </div>
+   <!-- Grid Principal de 2 Colunas no Desktop: Mostrador à esquerda + Cards e Evolução à direita -->
+   <div class="pj-top-grid">
+    <!-- Coluna Esquerda: Card Velocímetro Principal -->
+    <div id="pj-hero" class="pj-hero">
+     <div class="pj-loading">Calculando projeção ao vivo…</div>
+    </div>
 
-   <!-- 3 Cards Complementares -->
-   <div id="pj-cards" class="pj-cards"></div>
+    <!-- Coluna Direita: 3 KPIs + Gráfico Histórico da Projeção -->
+    <div class="pj-right-stack">
+     <div id="pj-cards" class="pj-cards"></div>
 
-   <!-- Gráfico Histórico da Projeção -->
-   <div class="pj-panel pj-chart-panel">
-    <div class="pj-panel-head">
-     <div>
-      <span class="pj-panel-eyebrow">LINHA DO TEMPO</span>
-      <h3 class="pj-panel-title">Evolução da Projeção Final</h3>
-      <p class="pj-panel-desc">Como a estimativa final do modelo se comportou a cada avanço da apuração nacional.</p>
-     </div>
-     <div class="pj-chart-legend">
-      <span><i class="pj-sw pj-l"></i>Lula (Projetado)</span>
-      <span><i class="pj-sw pj-f"></i>Flávio (Projetado)</span>
-      <span><span class="pj-ci-sample"></span>Margem de erro</span>
-      <span id="pj-status-text" class="pj-status-text"></span>
+     <div class="pj-panel pj-chart-panel">
+      <div class="pj-panel-head">
+       <div>
+        <span class="pj-panel-eyebrow">LINHA DO TEMPO AO VIVO</span>
+        <h3 class="pj-panel-title">Evolução da Projeção Final</h3>
+        <p class="pj-panel-desc">Como a estimativa final do modelo se comportou a cada avanço da apuração nacional.</p>
+       </div>
+       <div class="pj-chart-legend">
+        <span><i class="pj-sw pj-l"></i>Lula (Projetado)</span>
+        <span><i class="pj-sw pj-f"></i>Flávio (Projetado)</span>
+        <span><span class="pj-ci-sample"></span>Margem de erro</span>
+        <span id="pj-status-text" class="pj-status-text"></span>
+       </div>
+      </div>
+      <div id="pj-chart" class="pj-chart"><p class="pj-empty">Carregando histórico da projeção…</p></div>
+      <div id="pj-chart-tip" class="cv-tip" hidden></div>
      </div>
     </div>
-    <div id="pj-chart" class="pj-chart"><p class="pj-empty">Aguardando dados históricos da projeção…</p></div>
-    <div id="pj-chart-tip" class="pj-chart-tip" hidden></div>
    </div>
 
    <!-- Tabela Raio-X por Estado -->
@@ -213,18 +251,37 @@ function inject() {
       renderTable();
     });
   }
+
+  // Interação de hover no gráfico histórico
+  const chart = $('#pj-chart');
+  if (chart) {
+    chart.addEventListener('pointermove', onChartMove);
+    chart.addEventListener('pointerleave', () => {
+      const tip = $('#pj-chart-tip');
+      if (tip) tip.hidden = true;
+      const hl = $('#pj-hover-layer');
+      if (hl) hl.innerHTML = '';
+    });
+  }
 }
 
-function buildDialSvg(p) {
+function getSombraPaths(p) {
   const div = p.div || {};
-  // No mostrador ApuraLogo: 0 = 100% Lula (esquerda), 0.5 = 50%/50% (meio), 1.0 = 100% Flávio (direita)
-  const pos = div.pos != null ? div.pos : (p.flavioPct / 100);
   const loS = Math.max(0, Math.min(100, div.loS ?? p.ci95?.flavioMin ?? 45)) / 100;
   const hiS = Math.max(0, Math.min(100, div.hiS ?? p.ci95?.flavioMax ?? 55)) / 100;
   const lo50 = Math.max(loS, Math.min(hiS, (div.lo50 ?? (p.flavioPct - 1)) / 100));
   const hi50 = Math.max(lo50, Math.min(hiS, (div.hi50 ?? (p.flavioPct + 1)) / 100));
 
-  // 6 faixas de cor do semicírculo: [de, ate, cor, opacidade]
+  const outerD = (hiS - loS > 0.0005) ? Gf(loS, hiS, Ne - 9, me + 4) : '';
+  const innerD = (hi50 - lo50 > 0.0005) ? Gf(lo50, hi50, Ne - 9, me + 4) : '';
+  return { outerD, innerD };
+}
+
+function buildDialSvg(p) {
+  const div = p.div || {};
+  const pos = div.pos != null ? div.pos : (p.flavioPct / 100);
+  const { outerD, innerD } = getSombraPaths(p);
+
   const bands = [
     [0.00, 0.30, 'var(--pe)', 0.95],
     [0.30, 0.40, 'var(--pe)', 0.60],
@@ -238,7 +295,6 @@ function buildDialSvg(p) {
     .map(([a, b, col, op]) => `<path d="${Di(a, b)}" style="fill:${col}" fill-opacity="${op}"/>`)
     .join('');
 
-  // Linhas de tick em 30% (70 esq), 40% (60 esq), 60% (60 dir), 70% (70 dir) e divisa central em 50%
   const tickLine = (frac, cls, r1, r2) => {
     const [x1, y1] = Je(r1, frac);
     const [x2, y2] = Je(r2, frac);
@@ -265,17 +321,13 @@ function buildDialSvg(p) {
     tickLabel(0.60, 60) +
     tickLabel(0.50, 50);
 
-  const sombraHtml = (hiS - loS > 0.0005)
-    ? `<path d="${Gf(loS, hiS, Ne - 9, me + 4)}" class="pt-sombra"/>` +
-      (hi50 - lo50 > 0.0005 ? `<path d="${Gf(lo50, hi50, Ne - 9, me + 4)}" class="pt-sombra forte"/>` : '')
-    : '';
-
   const angleDeg = cp(pos).toFixed(2);
   const ariaLabel = `Lula ${pc(p.lulaPct, 1)}, Flavio Bolsonaro ${pc(p.flavioPct, 1)} dos votos válidos.`;
 
   return `<svg viewBox="-14 0 328 162" class="pt-dial" role="img" aria-label="${ariaLabel}">
     ${arcsHtml}
-    ${sombraHtml}
+    <path id="pt-sombra-outer" d="${outerD}" class="pt-sombra"/>
+    <path id="pt-sombra-inner" d="${innerD}" class="pt-sombra forte"/>
     ${ticksHtml}
     ${labelsHtml}
     <g class="pt-agulha" style="transform: rotate(${angleDeg}deg)">
@@ -293,14 +345,13 @@ function renderHero(d) {
   const c = d.current;
   const natP = d.natProgress || 0;
   const ci = p.ci95 || {};
+  const div = p.div || {};
 
-  // Formata hora estilo "20h04"
   const dt = new Date(d.updatedAt || Date.now());
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
   const hourStr = `${hh}h${mm}`;
 
-  // Barras da margem de erro
   const lulaMin = Math.max(0, Math.min(100, ci.lulaMin ?? p.lulaPct));
   const lulaMax = Math.max(lulaMin, Math.min(100, ci.lulaMax ?? p.lulaPct));
   const flavioMin = Math.max(0, Math.min(100, ci.flavioMin ?? p.flavioPct));
@@ -310,32 +361,83 @@ function renderHero(d) {
   const barMid = Math.max(0, lulaMax - lulaMin);
   const barRight = Math.max(0, 100 - lulaMax);
 
-  const dialSvg = buildDialSvg(p);
+  updateNeedleTremorSpec(p);
 
+  // Se o card .ponteiro já está montado, atualiza in-place para manter transições suaves ao vivo!
+  const existing = hero.querySelector('.ponteiro');
+  if (existing) {
+    const setTxt = (sel, txt) => {
+      const el = existing.querySelector(sel);
+      if (el && el.textContent !== txt) el.textContent = txt;
+    };
+    setTxt('[data-pj-bind="natPct"]', pc(natP, 2));
+    setTxt('[data-pj-bind="hourStr"]', hourStr);
+    setTxt('[data-pj-bind="lulaProjPct"]', pc(p.lulaPct, 2));
+    setTxt('[data-pj-bind="lulaProjVotes"]', `${num(p.lulaVotes)} votos`);
+    setTxt('[data-pj-bind="flavioProjPct"]', pc(p.flavioPct, 2));
+    setTxt('[data-pj-bind="flavioProjVotes"]', `${num(p.flavioVotes)} votos`);
+    setTxt('[data-pj-bind="oficialRotL"]', `Apuração oficial às ${hourStr}`);
+    setTxt('[data-pj-bind="oficialRotF"]', `Apuração oficial às ${hourStr}`);
+    setTxt('[data-pj-bind="lulaOficialPct"]', pc(c.lulaPct, 2));
+    setTxt('[data-pj-bind="lulaOficialVotes"]', `${num(c.lulaVotes)} votos`);
+    setTxt('[data-pj-bind="flavioOficialPct"]', pc(c.flavioPct, 2));
+    setTxt('[data-pj-bind="flavioOficialVotes"]', `${num(c.flavioVotes)} votos`);
+    setTxt('[data-pj-bind="mgLula"]', `${N1.format(lulaMin)}% a ${N1.format(lulaMax)}%`);
+    setTxt('[data-pj-bind="mgFlavio"]', `${N1.format(flavioMin)}% a ${N1.format(flavioMax)}%`);
+    setTxt('[data-pj-bind="statusRot"]', p.status);
+    setTxt('[data-pj-bind="statusSub"]', p.statusSub || 'A projeção ainda não crava um resultado nesta disputa.');
+    setTxt('[data-pj-bind="avSelo"]', p.cravado ? '✓' : '···');
+
+    const avisoEl = existing.querySelector('.tv-aviso');
+    if (avisoEl) {
+      avisoEl.classList.toggle('definido', !!p.cravado);
+      avisoEl.classList.toggle('indefinido', !p.cravado);
+    }
+
+    const barL = existing.querySelector('[data-pj-bar="left"]');
+    const barM = existing.querySelector('[data-pj-bar="mid"]');
+    const barR = existing.querySelector('[data-pj-bar="right"]');
+    if (barL) barL.style.width = `${barLeft.toFixed(2)}%`;
+    if (barM) barM.style.width = `${barMid.toFixed(2)}%`;
+    if (barR) barR.style.width = `${barRight.toFixed(2)}%`;
+
+    const { outerD, innerD } = getSombraPaths(p);
+    const outerEl = existing.querySelector('#pt-sombra-outer');
+    const innerEl = existing.querySelector('#pt-sombra-inner');
+    if (outerEl) outerEl.setAttribute('d', outerD);
+    if (innerEl) innerEl.setAttribute('d', innerD);
+
+    const pos = div.pos != null ? div.pos : (p.flavioPct / 100);
+    const needle = existing.querySelector('.pt-agulha');
+    if (needle) needle.style.transform = `rotate(${cp(pos).toFixed(2)}deg)`;
+    return;
+  }
+
+  const dialSvg = buildDialSvg(p);
   const sombraTooltip =
     'A sombra é a margem em que a projeção ainda pode mudar de lado: a menor que nunca errou nas 440 disputas reapuradas, e se estreita conforme as urnas chegam. Quando ela sai da linha do meio, a projeção crava o resultado; a parte mais escura é o mais provável.';
 
   hero.innerHTML = `
-   <div class="ponteiro com-duelo" style="--pe:#e01d24;--pd:#2b64e8">
+   <div class="ponteiro com-duelo" style="--pe:#dc2626;--pd:#2563eb">
     <!-- Topo: % das seções apuradas e AO VIVO -->
     <div class="pt-cabeca pt-andamento">
-     <span class="pt-pct"><b class="num">${pc(natP, 2)}</b> das seções apuradas</span>
+     <span class="pt-pct"><b class="num" data-pj-bind="natPct">${pc(natP, 2)}</b> das seções apuradas</span>
      <span class="pt-and-dir">
       <span class="pill vivo"><i></i>Ao vivo</span>
-      <span class="pt-hora" title="Hora da última totalização do TSE">${hourStr}</span>
+      <span class="pt-hora" data-pj-bind="hourStr" title="Hora da última totalização do TSE">${hourStr}</span>
      </span>
     </div>
 
     <!-- Mostrador: candidatos + fotos + dial SVG -->
     <div class="ptd-mostrador">
-     <div class="ptd-cand esq com-selo" style="--c:#e01d24">
+     <div class="ptd-cand esq com-selo" style="--c:#dc2626">
       <div class="ptd-nome"><span class="fav-cand">★</span> Lula</div>
       <div class="partido">PT · 13</div>
       <div class="ptd-selo"></div>
       <img src="/lula.webp" alt="Lula" class="foto ptd-foto">
      </div>
 
-     <div class="ptd-cand dir com-selo" style="--c:#2b64e8">
+     <div class="ptd-cand dir com-selo" style="--c:#2563eb">
       <div class="ptd-nome"><span class="fav-cand">★</span> Flavio Bolsonaro</div>
       <div class="partido">PL · 22</div>
       <div class="ptd-selo"></div>
@@ -357,25 +459,25 @@ function renderHero(d) {
 
     <!-- 4 Boxes Comparativos (Projeção para o fim vs Apuração oficial às HHhMM) -->
     <div class="ptb" role="group" aria-label="Números de Lula (à esquerda) e Flavio Bolsonaro (à direita)">
-     <div class="ptb-cx pj esq" style="--c:#e01d24">
+     <div class="ptb-cx pj esq" style="--c:#dc2626">
       <span class="ptb-rot">Projeção para o fim</span>
-      <b class="ptb-pct num">${pc(p.lulaPct, 2)}</b>
-      <span class="ptb-vt">${num(p.lulaVotes)} votos</span>
+      <b class="ptb-pct num" data-pj-bind="lulaProjPct">${pc(p.lulaPct, 2)}</b>
+      <span class="ptb-vt" data-pj-bind="lulaProjVotes">${num(p.lulaVotes)} votos</span>
      </div>
-     <div class="ptb-cx pj dir" style="--c:#2b64e8">
+     <div class="ptb-cx pj dir" style="--c:#2563eb">
       <span class="ptb-rot">Projeção para o fim</span>
-      <b class="ptb-pct num">${pc(p.flavioPct, 2)}</b>
-      <span class="ptb-vt">${num(p.flavioVotes)} votos</span>
+      <b class="ptb-pct num" data-pj-bind="flavioProjPct">${pc(p.flavioPct, 2)}</b>
+      <span class="ptb-vt" data-pj-bind="flavioProjVotes">${num(p.flavioVotes)} votos</span>
      </div>
      <div class="ptb-cx ag esq">
-      <span class="ptb-rot">Apuração oficial às ${hourStr}</span>
-      <b class="ptb-pct num">${pc(c.lulaPct, 2)}</b>
-      <span class="ptb-vt">${num(c.lulaVotes)} votos</span>
+      <span class="ptb-rot" data-pj-bind="oficialRotL">Apuração oficial às ${hourStr}</span>
+      <b class="ptb-pct num" data-pj-bind="lulaOficialPct">${pc(c.lulaPct, 2)}</b>
+      <span class="ptb-vt" data-pj-bind="lulaOficialVotes">${num(c.lulaVotes)} votos</span>
      </div>
      <div class="ptb-cx ag dir">
-      <span class="ptb-rot">Apuração oficial às ${hourStr}</span>
-      <b class="ptb-pct num">${pc(c.flavioPct, 2)}</b>
-      <span class="ptb-vt">${num(c.flavioVotes)} votos</span>
+      <span class="ptb-rot" data-pj-bind="oficialRotF">Apuração oficial às ${hourStr}</span>
+      <b class="ptb-pct num" data-pj-bind="flavioOficialPct">${pc(c.flavioPct, 2)}</b>
+      <span class="ptb-vt" data-pj-bind="flavioOficialVotes">${num(c.flavioVotes)} votos</span>
      </div>
     </div>
 
@@ -384,19 +486,19 @@ function renderHero(d) {
      <div class="pt-ch-topo"><span>Margem de erro</span></div>
      <div class="pt-mg-barra">
       <div class="pt-ch-barra">
-       <i style="width:${barLeft.toFixed(2)}%;background:var(--pe)"></i>
-       <i class="meio" style="width:${barMid.toFixed(2)}%"></i>
-       <i style="width:${barRight.toFixed(2)}%;background:var(--pd)"></i>
+       <i data-pj-bar="left" style="width:${barLeft.toFixed(2)}%;background:var(--pe)"></i>
+       <i data-pj-bar="mid" class="meio" style="width:${barMid.toFixed(2)}%"></i>
+       <i data-pj-bar="right" style="width:${barRight.toFixed(2)}%;background:var(--pd)"></i>
       </div>
       <i class="pt-mg-50" aria-hidden="true"></i>
      </div>
      <div class="pt-ch-itens dois">
       <span class="esq">
-       <b class="num mg">${N1.format(lulaMin)}% a ${N1.format(lulaMax)}%</b>
+       <b class="num mg" data-pj-bind="mgLula">${N1.format(lulaMin)}% a ${N1.format(lulaMax)}%</b>
        <span class="txt">Lula</span>
       </span>
       <span class="dir">
-       <b class="num mg">${N1.format(flavioMin)}% a ${N1.format(flavioMax)}%</b>
+       <b class="num mg" data-pj-bind="mgFlavio">${N1.format(flavioMin)}% a ${N1.format(flavioMax)}%</b>
        <span class="txt">Flavio Bolsonaro</span>
       </span>
      </div>
@@ -405,10 +507,10 @@ function renderHero(d) {
     <!-- Aviso de status (Resultado ainda indefinido / Resultado projetado) -->
     <div class="pt-aviso-slot">
      <div class="tv-aviso ${p.cravado ? 'definido' : 'indefinido'}">
-      <div class="av-selo">${p.cravado ? '✓' : '···'}</div>
+      <div class="av-selo" data-pj-bind="avSelo">${p.cravado ? '✓' : '···'}</div>
       <div>
-       <span class="av-rot">${p.status}</span>
-       <span>${p.statusSub || 'A projeção ainda não crava um resultado nesta disputa.'}</span>
+       <span class="av-rot" data-pj-bind="statusRot">${p.status}</span>
+       <span data-pj-bind="statusSub">${p.statusSub || 'A projeção ainda não crava um resultado nesta disputa.'}</span>
       </div>
      </div>
     </div>
@@ -460,8 +562,8 @@ function renderChart(d) {
     return;
   }
 
-  const W = Math.max(300, Math.round(el.clientWidth)), H = Math.max(200, Math.round(el.clientHeight));
-  const m = {l: 40, r: 40, t: 14, b: 26};
+  const W = Math.max(300, Math.round(el.clientWidth)), H = Math.max(220, Math.round(el.clientHeight));
+  const m = {l: 40, r: 44, t: 14, b: 26};
 
   const x0 = Math.floor(Math.min(...hist.map(p => p.progress)) / 5) * 5;
   const x1 = Math.min(100, Math.ceil(Math.max(...hist.map(p => p.progress), x0 + 15) / 5) * 5);
@@ -525,6 +627,56 @@ function renderChart(d) {
     <rect class="cv-hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/>
    </svg>
   `;
+}
+
+function onChartMove(e) {
+  if (!chartGeo || !chartGeo.hist?.length) return;
+  const el = $('#pj-chart');
+  const tip = $('#pj-chart-tip');
+  const hl = $('#pj-hover-layer');
+  if (!el || !tip || !hl) return;
+
+  const rect = el.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const {W, H, m, x0, x1, X, Y, hist} = chartGeo;
+  const targetProg = x0 + ((px - m.l) / Math.max(1, W - m.l - m.r)) * (x1 - x0);
+
+  let best = hist[0];
+  let bestDist = Math.abs(best.progress - targetProg);
+  for (const pt of hist) {
+    const d = Math.abs(pt.progress - targetProg);
+    if (d < bestDist) {
+      best = pt;
+      bestDist = d;
+    }
+  }
+
+  const cx = X(best.progress);
+  const ly = Y(best.lulaPct);
+  const fy = Y(best.flavioPct);
+
+  hl.innerHTML = `
+    <line class="cv-guide" x1="${cx}" x2="${cx}" y1="${m.t}" y2="${H - m.b}"/>
+    <circle class="cv-hdot cv-l" cx="${cx}" cy="${ly}" r="4.5"/>
+    <circle class="cv-hdot cv-f" cx="${cx}" cy="${fy}" r="4.5"/>
+  `;
+
+  const dt = new Date(best.t || Date.now());
+  const timeStr = dt.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+
+  tip.innerHTML = `
+    <div class="cv-th">${pc(best.progress, 2)} apurado · ${timeStr}</div>
+    <div class="cv-trow cv-thd"><span>Candidato</span><span>Projetado</span><span>Oficial</span></div>
+    <div class="cv-trow"><span class="cv-tn"><i class="cv-sw cv-l"></i>Lula</span><span class="cv-tl">${pc(best.lulaPct, 2)}</span><span>${pc(best.rawLulaPct, 2)}</span></div>
+    <div class="cv-trow"><span class="cv-tn"><i class="cv-sw cv-f"></i>Flávio</span><span class="cv-tf">${pc(best.flavioPct, 2)}</span><span>${pc(best.rawFlavioPct, 2)}</span></div>
+    <div class="cv-tdiff">Margem Lula: <b>${pc(best.lulaMin, 1)} a ${pc(best.lulaMax, 1)}</b></div>
+  `;
+  tip.hidden = false;
+
+  const tipW = 230;
+  const left = px + 16 + tipW > W ? Math.max(8, px - tipW - 12) : px + 14;
+  tip.style.left = `${left}px`;
+  tip.style.top = '48px';
 }
 
 function renderTable() {
@@ -603,7 +755,7 @@ function render() {
     statusEl.textContent = state.error
       ? `⚠ ${state.error}`
       : d
-        ? `Atualizado às ${new Date(d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
+        ? `Sincronizado às ${new Date(d.checkedAt || d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
         : '';
   }
 
@@ -626,6 +778,7 @@ function render() {
 async function load(force = false) {
   if (state.loading && !force) return;
   state.loading = true;
+  state.nextRefreshSec = 5;
   const refreshBtn = $('#pj-refresh-btn');
   if (refreshBtn) refreshBtn.classList.add('loading');
 
@@ -654,7 +807,7 @@ function route() {
   if (on) {
     document.querySelectorAll('nav a').forEach(a => a.classList.toggle('current', a.hash === '#projecao'));
     render();
-    if (!state.data || Date.now() - (state.data.updatedAt || 0) > 8000) load();
+    if (!state.data || Date.now() - (state.data.checkedAt || state.data.updatedAt || 0) > 4000) load();
   }
 }
 
@@ -671,6 +824,15 @@ new ResizeObserver(([e]) => {
 window.addEventListener('hashchange', route);
 route();
 load();
+
+// Loop ao vivo de 1s para contagem regressiva e atualização automática a cada 5s
 setInterval(() => {
-  if (active() && !document.hidden) load();
-}, 12000);
+  if (!active() || document.hidden) return;
+  state.nextRefreshSec = Math.max(0, state.nextRefreshSec - 1);
+  const cd = $('#pj-countdown');
+  if (cd) cd.textContent = `${state.nextRefreshSec}s`;
+  if (state.nextRefreshSec <= 0) {
+    state.nextRefreshSec = 5;
+    load();
+  }
+}, 1000);

@@ -3,7 +3,6 @@ import {readFile,mkdir,appendFile} from 'node:fs/promises';
 import {states,sourceUrl,normalize,tseHeaders} from './lib/tse.mjs';
 import {getExterior,exteriorResult,combineBrasilAndExterior} from './lib/exterior.mjs';
 import {getLiveCities} from './api/cities.mjs';
-import {getMunicipiosLive} from './api/municipios-live.mjs';
 import {getPresenceData} from './lib/presence.mjs';
 import {getCurva} from './lib/curva.mjs';
 import {computeProjection} from './lib/projecao.mjs';
@@ -22,7 +21,7 @@ async function getResult(uf,office){
  const v={data,checkedAt:Date.now(),etag:response.headers.get('etag'),error:null,history:history.slice(-240)};cache.set(key,v);return v;
  }catch(e){const v={...old,checkedAt:Date.now(),error:e.message};cache.set(key,v);return v;}})().finally(()=>pending.delete(key));pending.set(key,job);return job;
 }
-const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/brasil-topo.json':'brasil-topo.json','/world.json':'world.json','/maps.js':'maps.js','/curva.js':'curva.js','/projecao.js':'projecao.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
+const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/curva.js':'curva.js','/projecao.js':'projecao.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
 let atlasAt=0,atlasData=null,atlasPending=null;
 async function atlas(){
  if(atlasData&&Date.now()-atlasAt<5000)return atlasData;
@@ -33,10 +32,9 @@ const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
  if(url.pathname==='/api/presence'){const id=url.searchParams.get('id')||req.socket.remoteAddress||'client';const isLeaving=url.searchParams.get('leave')==='1'||req.method==='DELETE';res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');return res.end(JSON.stringify(getPresenceData(id,isLeaving)));}
  if(url.pathname==='/api/exterior'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getExterior()));}
- if(url.pathname==='/api/municipios-live'){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getMunicipiosLive()));}
  if(url.pathname==='/api/curva'){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getCurva()));}
  if(url.pathname==='/api/projecao'){
-  const method = url.searchParams.get('method') || 'bayesian';
+  const method = url.searchParams.get('method') || 'logit';
   const atlasMap = await atlas();
   const proj = await computeProjection(atlasMap, { method });
   res.setHeader('Content-Type','application/json; charset=utf-8');
