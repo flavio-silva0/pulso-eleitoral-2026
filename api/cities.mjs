@@ -20,7 +20,7 @@ export async function getLiveCities(uf) {
   const ufUpper = (uf || '').toUpperCase();
   const ufLower = ufUpper.toLowerCase();
   const cached = cache.get(ufUpper);
-  if (cached && Date.now() - cached.time < 30000) {
+  if (cached && Date.now() - cached.time < 15000) {
     return cached.data;
   }
 
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     res.writeHead(200, {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 's-maxage=20, stale-while-revalidate=40'
+      'Cache-Control': 's-maxage=15, stale-while-revalidate=30'
     });
     return res.end(JSON.stringify(data));
   } catch (e) {

@@ -20,7 +20,11 @@ const small={Singapura:[103.82,1.35],Malta:[14.38,35.94],Bahrain:[50.55,26.07],B
 export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRefresh}){
  let mode='brasil',world=null,exterior=null,selected=null,lastCheckedAt=Date.now();
  let citySearch='',cityFilter='all',cityLimit=60;
- let zoom=1,pan=[0,0],drag=null,animId=null;
+ let zoom=1,pan=[0,0],animId=null;
+ const activePointers=new Map();
+ let dragStartPos={x:0,y:0},dragStartPan=[0,0];
+ let pinchStartDist=0,pinchStartMid={x:0,y:0},pinchStartZoom=1,pinchStartPan=[0,0],pinchFocalPt=null;
+ let gestureMoved=false,justGestured=false,targetPlaceCandidate=null;
  const liveCitiesCache=new Map();
  const loadingStates=new Set();
 
@@ -42,55 +46,53 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     </div>
    </div>
 
-   <div class="map-candidate-bar rbanner" id="map-candidate-bar" aria-label="Placar Presidencial">
-    <div class="rb-face">
-     <img src="/lula.webp" class="rb-photo lula" alt="Lula">
-    </div>
+   <div class="map-candidate-bar" id="map-candidate-bar" aria-label="Placar Presidencial">
+     <div class="cand-avatar-wrap left">
+      <img src="/lula.webp" class="cand-avatar lula" alt="Lula">
+     </div>
 
-    <div class="rb-mid">
-     <div class="rb-top">
-      <div class="rb-nm lula">
-       <b>Lula</b>
-       <span class="rb-party-tag red"><span class="star">★</span> 13</span>
+     <div class="cand-bar-center">
+      <div class="cand-bar-top-row">
+       <div class="cand-bar-cand left">
+        <strong class="cand-name">Lula</strong>
+        <span class="cand-badge red">PT · 13</span>
+       </div>
+       <div class="cand-bar-cand right">
+        <span class="cand-badge blue">PL · 22</span>
+        <strong class="cand-name">Flávio</strong>
+       </div>
       </div>
-      <h2 class="rb-head" id="rb-headline">Ainda é cedo: menos de 1% das seções</h2>
-      <div class="rb-nm bolsonaro r">
-       <span class="rb-party-tag blue">22</span>
-       <b>Flávio</b>
+
+      <div class="cand-track-wrap" role="img" id="rb-bar-role" aria-label="Confronto de votos">
+       <div class="cand-track">
+        <div class="cand-fill lula" id="bar-seg-lula" style="width:50%">
+         <span class="cand-pct" id="bar-lula-pct">50,00<small>%</small></span>
+         <span class="cand-votes" id="bar-lula-votes">0 votos</span>
+        </div>
+        <div class="cand-fill bolsonaro" id="bar-seg-bolsonaro" style="width:50%">
+         <span class="cand-votes" id="bar-bolsonaro-votes">0 votos</span>
+         <span class="cand-pct" id="bar-bolsonaro-pct">50,00<small>%</small></span>
+        </div>
+        <div class="track-seam" id="bar-seam" style="left:50%"></div>
+       </div>
+       <div class="track-fifty"><em>50%</em></div>
+      </div>
+
+      <div class="cand-bar-footer">
+       <div class="cand-footer-stats">
+        <span class="live-dot-mini"></span>
+        <b id="rb-apurado-pct">0,00%</b> <span id="rb-apurado-sub">apurado</span>
+       </div>
+       <span class="scope-pill" id="bar-status-text">TOTAL GERAL · BRASIL + EXTERIOR</span>
       </div>
      </div>
 
-     <div class="rb-bar" role="img" id="rb-bar-role" aria-label="Confronto de votos">
-      <div class="rb-track">
-       <i class="rb-seg l" id="bar-seg-lula" style="width:50%">
-        <b class="rb-pct-val" id="bar-lula-pct">50,00<small>%</small></b>
-        <span class="rb-v" id="bar-lula-votes">0 votos</span>
-       </i>
-       <span class="rb-fire" id="bar-seam" style="left:50%">
-        <i></i><i></i><i></i><i></i><i></i>
-       </span>
-       <i class="rb-seg r" id="bar-seg-bolsonaro" style="width:50%">
-        <span class="rb-v" id="bar-bolsonaro-votes">0 votos</span>
-        <b class="rb-pct-val" id="bar-bolsonaro-pct">50,00<small>%</small></b>
-       </i>
-      </div>
-      <span class="rb-50"><em>50%</em></span>
+     <div class="cand-avatar-wrap right">
+      <img src="/bolsonaro.webp" class="cand-avatar bolsonaro" alt="Flávio Bolsonaro">
      </div>
 
-     <div class="rb-bottom-info">
-      <div class="rb-apurado-info">
-       <b id="rb-apurado-pct">0,00%</b> <span id="rb-apurado-sub">apurado</span>
-      </div>
-      <div class="rb-scope-badge" id="bar-status-text">TOTALIZAÇÃO GERAL · BRASIL</div>
-     </div>
+     <div class="cand-bar-foot-progress" aria-hidden="true"><i id="rb-foot-bar" style="width:0%"></i></div>
     </div>
-
-    <div class="rb-face">
-     <img src="/bolsonaro.webp" class="rb-photo bolsonaro" alt="Flávio Bolsonaro">
-    </div>
-
-    <i class="rb-foot" aria-hidden="true"><i id="rb-foot-bar" style="width:0%"></i></i>
-   </div>
 
    <div class="map-layout">
     <div class="map-canvas-wrap">
@@ -285,12 +287,75 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
 
  function getExteriorTotals(){
   const t=exterior?.data?.total;
-  const red=t?.['13']||0;
-  const blue=t?.['22']||0;
-  const counted=t?.secoes||0;
-  const total=t?.de||0;
-  const valid=red+blue;
-  return {red,blue,counted,total,valid};
+  if(t){
+   const red=t['13']||0;
+   const blue=t['22']||0;
+   const counted=t.secoes||0;
+   const total=t.de||0;
+   const valid=red+blue;
+   return {red,blue,counted,total,valid};
+  }
+  const zz=getAtlas()?.['ZZ']?.data;
+  if(zz){
+   const cands=zz.candidates||[];
+   const red=cands.find(c=>c.number==='13')?.votes||0;
+   const blue=cands.find(c=>c.number==='22')?.votes||0;
+   const counted=zz.counted||0;
+   const total=zz.sections||0;
+   const valid=zz.valid||(red+blue);
+   return {red,blue,counted,total,valid};
+  }
+  return {red:0,blue:0,counted:0,total:0,valid:0};
+ }
+
+ function getWorldTotals(){
+  const br=getBrasilTotals();
+  const ext=getExteriorTotals();
+
+  if(br.total>0){
+   return {
+    red:br.red+ext.red,
+    blue:br.blue+ext.blue,
+    counted:br.counted+ext.counted,
+    totalSections:br.total+ext.total,
+    br,
+    ext
+   };
+  }
+
+  const nat=typeof getNational==='function'?getNational():null;
+  if(nat&&nat.sourceKind==='combined'){
+   const cands=nat.candidates||[];
+   return {
+    red:cands.find(c=>c.number==='13')?.votes||0,
+    blue:cands.find(c=>c.number==='22')?.votes||0,
+    counted:nat.counted||0,
+    totalSections:nat.sections||0,
+    br,
+    ext
+   };
+  }
+
+  if(nat&&nat.sections>0){
+   const cands=nat.candidates||[];
+   return {
+    red:(cands.find(c=>c.number==='13')?.votes||0)+ext.red,
+    blue:(cands.find(c=>c.number==='22')?.votes||0)+ext.blue,
+    counted:(nat.counted||0)+ext.counted,
+    totalSections:(nat.sections||0)+ext.total,
+    br,
+    ext
+   };
+  }
+
+  return {
+   red:ext.red,
+   blue:ext.blue,
+   counted:ext.counted,
+   totalSections:ext.total,
+   br,
+   ext
+  };
  }
 
  function updateCandidateBar(){
@@ -306,36 +371,14 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   const barRole=document.querySelector('#rb-bar-role');
   if(!barLulaPct)return;
 
-  const br=getBrasilTotals();
-  const ext=getExteriorTotals();
-
-  let red=0,blue=0,counted=0,totalSections=0,label='',isMundoTotal=false;
-  if(selected){
-   const d=dataFor(selected);
-   if(d&&(d.red>0||d.blue>0)){
-    red=d.red;blue=d.blue;
-    counted=d.sections||0;
-    totalSections=d.totalSections||0;
-    label=mode==='brasil'?`ESTADO: ${d.name} (${selected})`:`PAÍS: ${d.name}`;
-   }
-  }
-  if(!red&&!blue){
-   if(mode==='brasil'){
-    red=br.red;
-    blue=br.blue;
-    counted=br.counted;
-    totalSections=br.total;
-    label=selected?`${dataFor(selected)?.name||selected} (aguardando votos) · Total Brasil`:'TOTALIZAÇÃO GERAL · BRASIL';
-   }else{
-    // MUNDO: mostrar a porcentagem total contando brasil e exterior!
-    isMundoTotal=true;
-    red=br.red+ext.red;
-    blue=br.blue+ext.blue;
-    counted=br.counted+ext.counted;
-    totalSections=br.total+ext.total;
-    label=selected?`${dataFor(selected)?.name||selected} (aguardando votos) · Brasil + Exterior`:'TOTAL GERAL · BRASIL + EXTERIOR';
-   }
-  }
+  const w=getWorldTotals();
+  const red=w.red;
+  const blue=w.blue;
+  const counted=w.counted;
+  const totalSections=w.totalSections;
+  const br=w.br;
+  const ext=w.ext;
+  const label='TOTAL GERAL · BRASIL + EXTERIOR';
 
   const tot=red+blue;
   const lPct=tot?(red/tot*100):50;
@@ -344,7 +387,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
 
   let headline='';
   if(tot===0){
-   headline=mode==='brasil'?'Aguardando início da apuração no Brasil':'Aguardando apuração';
+   headline='Aguardando apuração';
   }else if(progressPct<1){
    headline='Ainda é cedo: menos de 1% das seções';
   }else if(progressPct>=99.8){
@@ -354,9 +397,9 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    if(diff<0.5){
     headline='Disputa voto a voto';
    }else if(red>blue){
-    headline=isMundoTotal?'Lula lidera no total geral (Brasil + Exterior)':(selected?`Lula na frente em ${dataFor(selected)?.name||selected}`:'Lula na liderança parcial');
+    headline='Lula lidera no total geral (Brasil + Exterior)';
    }else{
-    headline=isMundoTotal?'Flávio lidera no total geral (Brasil + Exterior)':(selected?`Flávio na frente em ${dataFor(selected)?.name||selected}`:'Flávio na liderança parcial');
+    headline='Flávio lidera no total geral (Brasil + Exterior)';
    }
   }
 
@@ -380,21 +423,16 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   if(barSegBolsonaro)barSegBolsonaro.classList.toggle('tight',bPct<16);
 
   if(rbHeadline)rbHeadline.textContent=headline;
+
   if(barStatus){
    barStatus.textContent=label;
-   if(isMundoTotal){
-    barStatus.title=`Soma dos votos: Brasil (${fmt(br.counted)} seções, ${fmt(br.red+br.blue)} votos) + Exterior (${fmt(ext.counted)} seções, ${fmt(ext.red+ext.blue)} votos)`;
-   }else{
-    barStatus.removeAttribute('title');
-   }
+   barStatus.title=`Soma dos votos: Brasil (${fmt(br.counted)} seções, ${fmt(br.red+br.blue)} votos) + Exterior (${fmt(ext.counted)} seções, ${fmt(ext.red+ext.blue)} votos)`;
   }
 
   const fmtP=progressPct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
   if(rbApuradoPct)rbApuradoPct.textContent=fmtP;
   if(rbApuradoSub){
-   if(isMundoTotal){
-    rbApuradoSub.textContent=`apurado · ${fmt(counted)} de ${fmt(totalSections)} seções (Brasil + Exterior)`;
-   }else if(totalSections>0){
+   if(totalSections>0){
     rbApuradoSub.textContent=`apurado · ${fmt(counted)} de ${fmt(totalSections)} seções`;
    }else{
     rbApuradoSub.textContent='apurado';
@@ -985,6 +1023,80 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   }).join('')+'Z').join('')).join('');
  }
 
+ function clampPan(){
+  const w=mode==='brasil'?440:1000,h=mode==='brasil'?440:520;
+  const marginX=w*0.35,marginY=h*0.35;
+  const minX=-marginX,maxX=w+marginX-w/zoom;
+  const minY=-marginY,maxY=h+marginY-h/zoom;
+  if(minX<=maxX){
+   pan[0]=Math.max(minX,Math.min(maxX,pan[0]));
+  }else{
+   pan[0]=(w-w/zoom)/2;
+  }
+  if(minY<=maxY){
+   pan[1]=Math.max(minY,Math.min(maxY,pan[1]));
+  }else{
+   pan[1]=(h-h/zoom)/2;
+  }
+ }
+
+ function getSvgPoint(clientX,clientY){
+  if(clientX==null||clientY==null)return null;
+  const svg=canvas.querySelector('svg');
+  if(!svg)return null;
+  try{
+   const ctm=svg.getScreenCTM();
+   if(ctm){
+    const pt=svg.createSVGPoint();
+    pt.x=clientX;
+    pt.y=clientY;
+    const res=pt.matrixTransform(ctm.inverse());
+    if(res&&!isNaN(res.x)&&!isNaN(res.y)){
+     return {x:res.x,y:res.y};
+    }
+   }
+  }catch{}
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+  const uX=(clientX-rect.left)/rect.width;
+  const uY=(clientY-rect.top)/rect.height;
+  const w=mode==='brasil'?440:1000;
+  const h=mode==='brasil'?440:520;
+  return {
+   x:pan[0]+uX*(w/zoom),
+   y:pan[1]+uY*(h/zoom)
+  };
+ }
+
+ function zoomAtPoint(factor,clientX=null,clientY=null){
+  hideTooltip();
+  if(animId){cancelAnimationFrame(animId);animId=null}
+  const w=mode==='brasil'?440:1000,h=mode==='brasil'?440:520;
+  const next=Math.max(1,Math.min(16,zoom*factor));
+  if(next===zoom)return;
+
+  let focalX=null,focalY=null;
+  if(clientX!=null&&clientY!=null){
+   const pt=getSvgPoint(clientX,clientY);
+   if(pt&&!isNaN(pt.x)&&!isNaN(pt.y)){
+    focalX=pt.x;
+    focalY=pt.y;
+   }
+  }
+  if(focalX==null||focalY==null){
+   focalX=pan[0]+(w/zoom)/2;
+   focalY=pan[1]+(h/zoom)/2;
+  }
+
+  pan=[
+   focalX-(focalX-pan[0])*(zoom/next),
+   focalY-(focalY-pan[1])*(zoom/next)
+  ];
+  zoom=next;
+  clampPan();
+  view();
+ }
+
  function view(){
   const svg=canvas.querySelector('svg');
   if(!svg)return;
@@ -1038,12 +1150,12 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    if(mode==='mundo'){
     freshness.innerHTML=exterior?.error?'Última carga preservada':exterior?.data?`Boletins exterior: <b>${formatBrasilia(exterior.data.gerado)}</b> <small>(horário de Brasília)</small>`:'Aguardando feed do exterior';
    }else{
-    freshness.innerHTML=`Fonte: TSE oficial · Atualizado às <b>${nowBrasilia}</b> <small>(horário de Brasília)</small> · a cada 60 s`;
+    freshness.innerHTML=`Fonte: TSE oficial · Atualizado às <b>${nowBrasilia}</b> <small>(horário de Brasília)</small> · a cada 15 s`;
    }
   }
 
   document.querySelector('#map-source').innerHTML=mode==='mundo'
-   ?`<b>Fonte dos dados:</b> boletins de urna do exterior agregados pelo <a href="https://seuimposto.com/" target="_blank" rel="noopener">seuimposto.com ↗</a>. Malha: Natural Earth.`
+   ?`<b>Fonte dos dados:</b> boletins de urna oficiais do exterior apurados pelo Tribunal Superior Eleitoral (TSE). Malha: Natural Earth.`
    :'<b>Fonte dos dados:</b> arquivos oficiais de totalização e apuração municipal do Tribunal Superior Eleitoral (TSE). Malha: IBGE.';
  }
 
@@ -1085,42 +1197,171 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   }
  });
 
+ let justSelected=false;
+
  canvas.addEventListener('click',e=>{
-  if(drag?.moved)return;
-  const p=e.target.closest('[data-place]');
-  if(p)selectPlace(p.dataset.place);
+  if(justSelected||justGestured||gestureMoved){
+   e.preventDefault();
+   e.stopPropagation();
+   return;
+  }
+  const p=e.target.closest('[data-place]')?.getAttribute('data-place')||targetPlaceCandidate;
+  if(p)selectPlace(p);
  });
  canvas.addEventListener('keydown',e=>{
   if(['Enter',' '].includes(e.key)){
    const p=e.target.closest('[data-place]');
-   if(p){e.preventDefault();selectPlace(p.dataset.place)}
+   if(p){
+    e.preventDefault();
+    selectPlace(p.getAttribute('data-place')||p.dataset.place);
+   }
   }
  });
 
- canvas.onpointerdown=e=>{
+ canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  let dy=e.deltaY;
+  if(e.deltaMode===1)dy*=20;
+  else if(e.deltaMode===2)dy*=60;
+  const factor=e.ctrlKey
+   ? Math.exp(-dy*0.01)
+   : Math.exp(-dy*0.0025);
+  zoomAtPoint(factor,e.clientX,e.clientY);
+ },{passive:false});
+
+ canvas.addEventListener('dblclick',e=>{
+  e.preventDefault();
+  zoomAtPoint(e.shiftKey?1/1.5:1.5,e.clientX,e.clientY);
+ });
+
+ canvas.addEventListener('pointerdown',e=>{
   hideTooltip();
-  drag={x:e.clientX,y:e.clientY,start:[...pan],moved:false,place:e.target.closest('[data-place]')?.dataset.place};
-  canvas.setPointerCapture(e.pointerId);
- };
- canvas.onpointermove=e=>{
-  if(!drag||!canvas.hasPointerCapture(e.pointerId))return;
-  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
-  if(Math.abs(dx)+Math.abs(dy)>5){
-   drag.moved=true;
+  if(animId){cancelAnimationFrame(animId);animId=null}
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  if(activePointers.size===1){
+   dragStartPos={x:e.clientX,y:e.clientY};
+   dragStartPan=[...pan];
+   gestureMoved=false;
+   const placeEl=e.target.closest('[data-place]');
+   targetPlaceCandidate=placeEl?(placeEl.getAttribute('data-place')||placeEl.dataset.place):null;
+  }else if(activePointers.size===2){
+   gestureMoved=true;
+   targetPlaceCandidate=null;
+   canvas.classList.add('is-dragging');
    hideTooltip();
+   const [p1,p2]=Array.from(activePointers.values());
+   pinchStartDist=Math.hypot(p1.x-p2.x,p1.y-p2.y)||1;
+   pinchStartMid={x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2};
+   pinchStartZoom=zoom;
+   pinchStartPan=[...pan];
+   pinchFocalPt=getSvgPoint(pinchStartMid.x,pinchStartMid.y);
   }
-  const scale=(mode==='brasil'?440:1000)/canvas.clientWidth/zoom;
-  pan=[drag.start[0]-dx*scale,drag.start[1]-dy*scale];
-  view();
- };
- canvas.onpointerup=e=>{
-  if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
-  if(drag?.moved)setTimeout(()=>{drag=null},0);
-  else{const place=drag?.place;drag=null;if(place)selectPlace(place)}
- };
+ });
+
+ window.addEventListener('pointermove',e=>{
+  if(!activePointers.has(e.pointerId))return;
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  if(activePointers.size===1){
+   const dx=e.clientX-dragStartPos.x,dy=e.clientY-dragStartPos.y;
+   if(!gestureMoved&&Math.hypot(dx,dy)>10){
+    gestureMoved=true;
+    targetPlaceCandidate=null;
+    canvas.classList.add('is-dragging');
+    hideTooltip();
+   }
+   if(gestureMoved){
+    const w=mode==='brasil'?440:1000,h=mode==='brasil'?440:520;
+    const svg=canvas.querySelector('svg');
+    const svgRect=svg?svg.getBoundingClientRect():canvas.getBoundingClientRect();
+    const scaleX=(w/zoom)/(svgRect.width||canvas.clientWidth||1);
+    const scaleY=(h/zoom)/(svgRect.height||canvas.clientHeight||1);
+    pan=[dragStartPan[0]-dx*scaleX,dragStartPan[1]-dy*scaleY];
+    clampPan();
+    view();
+   }
+  }else if(activePointers.size>=2){
+   gestureMoved=true;
+   targetPlaceCandidate=null;
+   canvas.classList.add('is-dragging');
+   hideTooltip();
+   const [p1,p2]=Array.from(activePointers.values()).slice(0,2);
+   const curDist=Math.hypot(p1.x-p2.x,p1.y-p2.y)||1;
+   const curMid={x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2};
+
+   if(pinchStartDist>0){
+    const scaleFactor=curDist/pinchStartDist;
+    const nextZoom=Math.max(1,Math.min(16,pinchStartZoom*scaleFactor));
+    const w=mode==='brasil'?440:1000,h=mode==='brasil'?440:520;
+
+    const focalX=pinchFocalPt?pinchFocalPt.x:pinchStartPan[0]+(w/pinchStartZoom)/2;
+    const focalY=pinchFocalPt?pinchFocalPt.y:pinchStartPan[1]+(h/pinchStartZoom)/2;
+
+    const zoomPanX=focalX-(focalX-pinchStartPan[0])*(pinchStartZoom/nextZoom);
+    const zoomPanY=focalY-(focalY-pinchStartPan[1])*(pinchStartZoom/nextZoom);
+
+    const svg=canvas.querySelector('svg');
+    const svgRect=svg?svg.getBoundingClientRect():canvas.getBoundingClientRect();
+    const scaleX=(w/nextZoom)/(svgRect.width||canvas.clientWidth||1);
+    const scaleY=(h/nextZoom)/(svgRect.height||canvas.clientHeight||1);
+
+    pan=[
+     zoomPanX-(curMid.x-pinchStartMid.x)*scaleX,
+     zoomPanY-(curMid.y-pinchStartMid.y)*scaleY
+    ];
+    zoom=nextZoom;
+    clampPan();
+    view();
+   }
+  }
+ });
+
+ function onPointerEnd(e){
+  if(!activePointers.has(e.pointerId))return;
+  activePointers.delete(e.pointerId);
+
+  if(activePointers.size===1){
+   const remaining=Array.from(activePointers.values())[0];
+   dragStartPos={x:remaining.x,y:remaining.y};
+   dragStartPan=[...pan];
+   gestureMoved=true;
+   targetPlaceCandidate=null;
+  }else if(activePointers.size===0){
+   canvas.classList.remove('is-dragging');
+   if(gestureMoved){
+    justGestured=true;
+    setTimeout(()=>{justGestured=false},100);
+   }else if(targetPlaceCandidate){
+    const placeToSelect=targetPlaceCandidate;
+    justSelected=true;
+    setTimeout(()=>{justSelected=false},300);
+    selectPlace(placeToSelect);
+   }
+   targetPlaceCandidate=null;
+   gestureMoved=false;
+  }
+ }
+
+ window.addEventListener('pointerup',onPointerEnd);
+ window.addEventListener('pointercancel',onPointerEnd);
+
+ canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length>1)e.preventDefault();
+ },{passive:false});
+
+ canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+ },{passive:false});
+
+ canvas.addEventListener('gesturestart',e=>e.preventDefault());
+ canvas.addEventListener('gesturechange',e=>e.preventDefault());
+ canvas.addEventListener('gestureend',e=>e.preventDefault());
 
  mapWrap.addEventListener('pointermove',e=>{
-  if(drag?.moved){
+  if(gestureMoved||activePointers.size>0){
    hideTooltip();
    return;
   }
@@ -1155,21 +1396,14 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  });
  canvas.addEventListener('focusout',hideTooltip);
 
- function changeZoom(factor){
-  hideTooltip();
-  const next=Math.max(1,Math.min(8,zoom*factor)),w=mode==='brasil'?440:1000,h=mode==='brasil'?440:520;
-  pan=[pan[0]+w/zoom/2-w/next/2,pan[1]+h/zoom/2-h/next/2];
-  zoom=next;
-  view();
- }
- document.querySelector('#zoom-in').onclick=()=>changeZoom(1.5);
- document.querySelector('#zoom-out').onclick=()=>changeZoom(1/1.5);
+ document.querySelector('#zoom-in').onclick=()=>zoomAtPoint(1.4);
+ document.querySelector('#zoom-out').onclick=()=>zoomAtPoint(1/1.4);
  document.querySelector('#zoom-reset').onclick=()=>selectPlace(null);
  document.querySelector('#map-refresh').onclick=refresh;
 
  fetch('/world.json').then(r=>r.json()).then(g=>{world=g;render()}).catch(()=>{canvas.textContent='Não foi possível carregar a malha mundial.'});
  refresh();
- setInterval(refresh,30000);
+ setInterval(refresh,15000);
  document.addEventListener('atlas-update',()=>{lastCheckedAt=Date.now();render()});
  route();
 

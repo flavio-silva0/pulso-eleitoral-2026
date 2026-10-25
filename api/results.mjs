@@ -1,18 +1,18 @@
-import {states, sourceUrl, normalize} from '../lib/tse.mjs';
+import {states, sourceUrl, normalize, tseHeaders} from '../lib/tse.mjs';
 import {getExterior, exteriorResult, combineBrasilAndExterior} from '../lib/exterior.mjs';
 
 const cache = new Map(), pending = new Map();
 
 async function getResult(uf, office) {
   const key = `${office}:${uf}`, old = cache.get(key);
-  if (old && Date.now() - old.checkedAt < (old.error ? 120000 : 30000)) return old;
+  if (old && Date.now() - old.checkedAt < (old.error ? 4000 : 15000)) return old;
   if (pending.has(key)) return pending.get(key);
 
   const job = (async () => {
     try {
       const response = await fetch(sourceUrl(uf, office), {
         signal: AbortSignal.timeout(12000),
-        headers: old?.etag ? {'If-None-Match': old.etag} : {}
+        headers: old?.etag ? {...tseHeaders, 'If-None-Match': old.etag} : tseHeaders
       });
       if (response.status === 304 && old?.data) {
         const v = {...old, checkedAt: Date.now(), error: null};
@@ -47,7 +47,7 @@ async function getResult(uf, office) {
 export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
-    const uf = (url.searchParams.get('uf') || 'BR').toUpperCase();
+    const uf = (url.searchParams.get('uf') || 'TODOS').toUpperCase();
     const office = url.searchParams.get('office') || 'presidente';
 
     if (uf === 'TODOS') {
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
           checkedAt: feed.checkedAt,
           error: feed.error,
           history: [],
-          note: 'Contagem de boletins do exterior agregada pelo seuimposto.com; ainda não é a totalização oficial. Não somada ao placar nacional.'
+          note: 'Boletins de urna oficiais do exterior; apuração preliminar antes da consolidação do TSE.'
         };
       }
     }

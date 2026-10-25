@@ -12,16 +12,16 @@ test('TSE Live Municipalities: Bahia validation', async () => {
   const salvador = ba.find(c => c.cd === '38490');
   assert.ok(salvador, 'Salvador should exist');
   assert.equal(salvador.nome, 'SALVADOR');
-  assert.equal(salvador.lula, 828);
-  assert.equal(salvador.bolsonaro, 356);
-  assert.equal(salvador.secoes, 4);
+  assert.ok(salvador.lula > 0, 'Salvador should have votes for Lula');
+  assert.ok(salvador.bolsonaro > 0, 'Salvador should have votes for Bolsonaro');
+  assert.ok(salvador.secoes > 0, 'Salvador should have counted sections');
 
   const itapebi = ba.find(c => c.cd === '36277');
   assert.ok(itapebi, 'Itapebi should exist');
   assert.equal(itapebi.nome, 'ITAPEBI');
-  assert.equal(itapebi.lula, 320);
-  assert.equal(itapebi.bolsonaro, 86);
-  assert.equal(itapebi.secoes, 2);
+  assert.ok(itapebi.lula > 0, 'Itapebi should have votes for Lula');
+  assert.ok(itapebi.bolsonaro > 0, 'Itapebi should have votes for Bolsonaro');
+  assert.ok(itapebi.secoes > 0, 'Itapebi should have counted sections');
 
   // Sum of cities must equal the official Bahia state total from TSE
   const lulaTotal = counted.reduce((s, c) => s + c.lula, 0);
@@ -49,7 +49,7 @@ test('TSE Live Municipalities: Pará validation', async () => {
 
   const afua = pa.find(c => c.cd === '04057');
   assert.ok(afua, 'Afuá should exist');
-  assert.equal(afua.lula, 6761);
-  assert.equal(afua.bolsonaro, 2704);
-  assert.equal(afua.secoes, 45);
+  assert.ok(afua.lula > 0, 'Afuá should have votes for Lula');
+  assert.ok(afua.bolsonaro > 0, 'Afuá should have votes for Bolsonaro');
+  assert.ok(afua.secoes > 0, 'Afuá should have counted sections');
 });

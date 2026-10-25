@@ -1,6 +1,6 @@
 import http from 'node:http';
 import {readFile,mkdir,appendFile} from 'node:fs/promises';
-import {states,sourceUrl,normalize} from './lib/tse.mjs';
+import {states,sourceUrl,normalize,tseHeaders} from './lib/tse.mjs';
 import {getExterior,exteriorResult,combineBrasilAndExterior} from './lib/exterior.mjs';
 import {getLiveCities} from './api/cities.mjs';
 import {getPresenceData} from './lib/presence.mjs';
@@ -8,10 +8,10 @@ const cache=new Map(),pending=new Map();
 try{await mkdir('.runtime',{recursive:true});}catch{}
 async function getResult(uf,office){
  const key=`${office}:${uf}`,old=cache.get(key);
- if(old&&Date.now()-old.checkedAt<(old.error?120000:30000))return old;
+ if(old&&Date.now()-old.checkedAt<(old.error?4000:15000))return old;
  if(pending.has(key))return pending.get(key);
  const job=(async()=>{try{
- const response=await fetch(sourceUrl(uf,office),{signal:AbortSignal.timeout(12000),headers:old?.etag?{'If-None-Match':old.etag}:{}});
+ const response=await fetch(sourceUrl(uf,office),{signal:AbortSignal.timeout(12000),headers:old?.etag?{...tseHeaders,'If-None-Match':old.etag}:tseHeaders});
  if(response.status===304&&old?.data){const v={...old,checkedAt:Date.now(),error:null};cache.set(key,v);return v;}
  if(!response.ok)throw Error(response.status===404?'Arquivo ainda não disponível para esta disputa.':`Fonte TSE indisponível (HTTP ${response.status}).`);
  const data=normalize(await response.json(),uf,office),history=[...(old?.history||[])];
@@ -19,12 +19,12 @@ async function getResult(uf,office){
  const v={data,checkedAt:Date.now(),etag:response.headers.get('etag'),error:null,history:history.slice(-240)};cache.set(key,v);return v;
  }catch(e){const v={...old,checkedAt:Date.now(),error:e.message};cache.set(key,v);return v;}})().finally(()=>pending.delete(key));pending.set(key,job);return job;
 }
-const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
+const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
 let atlasAt=0,atlasData=null,atlasPending=null;
 async function atlas(){
- if(atlasData&&Date.now()-atlasAt<60000)return atlasData;
+ if(atlasData&&Date.now()-atlasAt<15000)return atlasData;
  if(atlasPending)return atlasPending;
- atlasPending=(async()=>{const entries=Object.keys(states),output={};let cursor=0;await Promise.all(Array.from({length:3},async()=>{while(cursor<entries.length){const uf=entries[cursor++];output[uf]=await getResult(uf,'presidente');}}));atlasData=output;atlasAt=Date.now();return output;})().finally(()=>atlasPending=null);return atlasPending;
+ atlasPending=(async()=>{const entries=Object.keys(states),output={};let cursor=0;await Promise.all(Array.from({length:3},async()=>{while(cursor<entries.length){const uf=entries[cursor++];if(!uf)break;output[uf]=await getResult(uf,'presidente');await new Promise(r=>setTimeout(r,30));}}));atlasData=output;atlasAt=Date.now();return output;})().finally(()=>atlasPending=null);return atlasPending;
 }
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
@@ -32,7 +32,7 @@ const server=http.createServer(async(req,res)=>{try{
  if(url.pathname==='/api/exterior'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(await getExterior()));}
  if(url.pathname==='/api/atlas'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await atlas()));}
  if(url.pathname==='/api/results'){
- const uf=(url.searchParams.get('uf')||'BR').toUpperCase(),office=url.searchParams.get('office')||'presidente';
+ const uf=(url.searchParams.get('uf')||'TODOS').toUpperCase(),office=url.searchParams.get('office')||'presidente';
  if(uf==='TODOS'){
   if(office!=='presidente'){res.writeHead(400,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Seleção inválida'}));}
   const brRes=await getResult('BR','presidente');
@@ -53,7 +53,7 @@ const server=http.createServer(async(req,res)=>{try{
  }
  try{sourceUrl(uf,office)}catch{res.writeHead(400,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Seleção inválida'}));}
  let result=await getResult(uf,office);
- if(uf==='ZZ'&&office==='presidente'&&!(result.data?.counted>0)){const feed=await getExterior();if(feed.data){result={...result,data:exteriorResult(result.data,feed.data),officialData:result.data,checkedAt:feed.checkedAt,error:feed.error,history:[],note:'Contagem de boletins do exterior agregada pelo seuimposto.com; ainda não é a totalização oficial. Não somada ao placar nacional.'};}}
+ if(uf==='ZZ'&&office==='presidente'&&!(result.data?.counted>0)){const feed=await getExterior();if(feed.data){result={...result,data:exteriorResult(result.data,feed.data),officialData:result.data,checkedAt:feed.checkedAt,error:feed.error,history:[],note:'Boletins de urna oficiais do exterior; apuração preliminar antes da consolidação do TSE.'};}}
  res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify({...result,etag:undefined}));
  }
  if(url.pathname==='/api/states'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(states));}
@@ -63,6 +63,10 @@ const server=http.createServer(async(req,res)=>{try{
  res.setHeader('X-Content-Type-Options','nosniff');res.end(await readFile(new URL(`./public/${files[url.pathname]}`,import.meta.url)));
  }catch{res.writeHead(500);res.end('Erro interno');}});
 if(!process.env.VERCEL){
- server.listen(Number(process.env.PORT||3000),()=>console.log('Pulso Eleitoral: http://localhost:'+ (process.env.PORT||3000)));
+ server.listen(Number(process.env.PORT||3000),()=>{
+  console.log('Pulso Eleitoral: http://localhost:'+ (process.env.PORT||3000));
+  atlas().catch(()=>{});
+ });
+ setInterval(()=>atlas().catch(()=>{}),15000);
 }
 export default server;

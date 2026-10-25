@@ -1,17 +1,17 @@
-import {states, sourceUrl, normalize} from '../lib/tse.mjs';
+import {states, sourceUrl, normalize, tseHeaders} from '../lib/tse.mjs';
 
 const cache = new Map(), pending = new Map();
 
 async function getResult(uf, office) {
   const key = `${office}:${uf}`, old = cache.get(key);
-  if (old && Date.now() - old.checkedAt < (old.error ? 120000 : 30000)) return old;
+  if (old && Date.now() - old.checkedAt < (old.error ? 4000 : 15000)) return old;
   if (pending.has(key)) return pending.get(key);
 
   const job = (async () => {
     try {
       const response = await fetch(sourceUrl(uf, office), {
         signal: AbortSignal.timeout(12000),
-        headers: old?.etag ? {'If-None-Match': old.etag} : {}
+        headers: old?.etag ? {...tseHeaders, 'If-None-Match': old.etag} : tseHeaders
       });
       if (response.status === 304 && old?.data) {
         const v = {...old, checkedAt: Date.now(), error: null};
@@ -37,7 +37,7 @@ async function getResult(uf, office) {
 let atlasAt = 0, atlasData = null, atlasPending = null;
 
 async function atlas() {
-  if (atlasData && Date.now() - atlasAt < 60000) return atlasData;
+  if (atlasData && Date.now() - atlasAt < 15000) return atlasData;
   if (atlasPending) return atlasPending;
 
   atlasPending = (async () => {
@@ -45,10 +45,12 @@ async function atlas() {
     const output = {};
     let cursor = 0;
     await Promise.all(
-      Array.from({length: 4}, async () => {
+      Array.from({length: 3}, async () => {
         while (cursor < entries.length) {
           const uf = entries[cursor++];
+          if (!uf) break;
           output[uf] = await getResult(uf, 'presidente');
+          await new Promise(r => setTimeout(r, 30));
         }
       })
     );
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
     const data = await atlas();
     res.writeHead(200, {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 's-maxage=30, stale-while-revalidate=60'
+      'Cache-Control': 's-maxage=15, stale-while-revalidate=30'
     });
     return res.end(JSON.stringify(data));
   } catch (e) {

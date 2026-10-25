@@ -1,7 +1,7 @@
 import {initMaps,heatColor} from './maps.js';
 const $=s=>document.querySelector(s),fmt=n=>n==null?'—':new Intl.NumberFormat('pt-BR').format(n),pct=n=>n==null?'—':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%',escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const regions={'Norte':['AC','AM','AP','PA','RO','RR','TO'],'Nordeste':['AL','BA','CE','MA','PB','PE','PI','RN','SE'],'Centro-Oeste':['DF','GO','MS','MT'],'Sudeste':['ES','MG','RJ','SP'],'Sul':['PR','RS','SC'],'Exterior':['ZZ']};
-let uf='BR',office='presidente',states={},result=null,sequence=0,favorites=[],atlasData={},geometry=null;
+let uf='TODOS',office='presidente',states={},result=null,sequence=0,favorites=[],atlasData={},geometry=null;
 try{favorites=JSON.parse(localStorage.getItem('pulso-favorites')||'[]');if(!Array.isArray(favorites))favorites=[];}catch{}
 function toast(t){$('#toast').textContent=t;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',3200)}
 const color=(c,i)=>c.number==='13'?'#b45a4c':c.number==='22'?'#4d76ad':['#4d76ad','#b45a4c','#978339'][i%3];
@@ -22,7 +22,7 @@ function render(){
  $('#progress').textContent=pct(d.progress);$('#sections').textContent=`${fmt(d.counted)} de ${fmt(d.sections)} seções`;$('#progressbar').style.width=`${Math.min(100,d.progress||0)}%`;
  $('#valid').textContent=fmt(d.valid);$('#turnout').textContent=fmt(d.turnout);$('#invalid').textContent=`${fmt(d.blank)} / ${fmt(d.nulls)}`;$('#abstentions').textContent=fmt(d.abstentions);
  const [a,b]=d.candidates;$('#gap').textContent=d.valid>0&&a&&b?(a.votes===b.votes?'Empate na contagem parcial':`Diferença: ${fmt(a.votes-b.votes)} votos · ${pct(a.percent-b.percent).replace('%',' p.p.')}`):'Aguardando os primeiros votos';
- $('#generated').textContent=`${d.sourceKind==='external-bu'?'Boletins · seuimposto.com':d.sourceKind==='combined'?'TSE + Exterior (seuimposto.com)':'Carga do TSE'}: ${d.generated}`;$('#source').href=d.source;
+ $('#generated').textContent=`${d.sourceKind==='external-bu'?'Boletins oficiais do exterior':d.sourceKind==='combined'?'Totalização TSE + Boletins do exterior':'Carga oficial do TSE'}: ${d.generated}`;$('#source').href=d.source;
  $('.progress-label').innerHTML=`<span><b id="progress">${pct(d.progress)}</b> das seções ${d.sourceKind==='external-bu'?'com boletins coletados':d.sourceKind==='combined'?'apuradas (Brasil + exterior)':'totalizadas'}</span><span id="sections">${fmt(d.counted)} de ${fmt(d.sections)} seções</span>`;
  const history=result.history||[];$('#history-count').textContent=history.length;
  $('#history').innerHTML=history.slice(-4).reverse().map(h=>`<div class="history-row"><time>${new Date(h.at).toLocaleTimeString('pt-BR')}</time><span>${pct(h.progress)} totalizado</span><span>${fmt(h.candidates.reduce((s,c)=>s+c.votes,0))} votos nominais</span></div>`).join('');
@@ -195,8 +195,8 @@ $('#brazil-map').onclick=e=>{
 $('#brazil-map').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const p=e.target.closest('[data-map-uf]');if(p){e.preventDefault();hideBTooltip();select(p.dataset.mapUf,'presidente')}}};
 $('#state-ranking').onclick=e=>{const b=e.target.closest('[data-ranking]');if(b)select(b.dataset.ranking,'presidente')};
 $('#placar').insertAdjacentHTML('beforebegin','<div id="exterior-banner" class="exterior-banner" hidden></div>');
-document.addEventListener('exterior-update',e=>{const r=e.detail;if(!r.data)return;const t=r.data.total;$('#exterior-banner').hidden=false;$('#exterior-banner').innerHTML=`<div><span class="eyebrow">${r.error?'ÚLTIMA CARGA · ATUALIZAÇÃO INDISPONÍVEL':'JÁ HÁ VOTOS NO EXTERIOR'}</span><p><span class="banner-candidate"><img src="/lula.webp" class="mini-photo" alt="Lula"> <b>Lula: ${fmt(t['13'])}</b></span> · <span class="banner-candidate"><img src="/bolsonaro.webp" class="mini-photo" alt="Flavio Bolsonaro"> <b>Flavio: ${fmt(t['22'])}</b></span> · ${fmt(t.secoes)} seções coletadas</p><small>Boletins agregados pelo seuimposto.com · ${new Date(r.data.gerado).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})} · separados da totalização nacional.</small></div><button id="open-exterior">Ver exterior ↗</button>`;$('#open-exterior').onclick=()=>select('ZZ')});
-initMaps({getAtlas:()=>atlasData,getStates:()=>states,getBrazil:()=>geometry,getNational:()=>(uf==='BR'?result?.data:null),onSelect:u=>select(u,'presidente'),onRefresh:()=>{load();loadAtlas();}});
+document.addEventListener('exterior-update',e=>{const r=e.detail;if(!r.data)return;const t=r.data.total;$('#exterior-banner').hidden=false;$('#exterior-banner').innerHTML=`<div><span class="eyebrow">${r.error?'ÚLTIMA CARGA · ATUALIZAÇÃO INDISPONÍVEL':'JÁ HÁ VOTOS NO EXTERIOR'}</span><p><span class="banner-candidate"><img src="/lula.webp" class="mini-photo" alt="Lula"> <b>Lula: ${fmt(t['13'])}</b></span> · <span class="banner-candidate"><img src="/bolsonaro.webp" class="mini-photo" alt="Flavio Bolsonaro"> <b>Flavio: ${fmt(t['22'])}</b></span> · ${fmt(t.secoes)} seções coletadas</p><small>Boletins oficiais de urna do exterior · ${new Date(r.data.gerado).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})} · acompanhamento em tempo real.</small></div><button id="open-exterior">Ver exterior ↗</button>`;$('#open-exterior').onclick=()=>select('ZZ')});
+initMaps({getAtlas:()=>atlasData,getStates:()=>states,getBrazil:()=>geometry,getNational:()=>(['BR','TODOS'].includes(uf)?result?.data:null),onSelect:u=>select(u,'presidente'),onRefresh:()=>{load();loadAtlas();}});
 function updateLiveCounters(count){
  const num=Math.max(1,Number(count)||1);
  const formatted=fmt(num);
@@ -224,4 +224,4 @@ syncPresence();
 setInterval(syncPresence,15000);
 window.addEventListener('pagehide',()=>syncPresence(true));
 window.addEventListener('beforeunload',()=>syncPresence(true));
-try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,30000);setInterval(loadAtlas,60000);
+try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,15000);setInterval(loadAtlas,15000);
