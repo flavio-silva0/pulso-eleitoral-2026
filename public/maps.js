@@ -139,7 +139,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   </section>
  `);
 
- document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Apuração</a>';
+ document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Apuração</a><a href="#curva">03 · 1º × 2º turno</a>';
  document.querySelector('.columns').hidden=true;
  document.querySelector('.transparency').hidden=true;
  const root=document.querySelector('#maps-page'),canvas=document.querySelector('#heat-map'),tooltip=root.querySelector('#map-tooltip'),mapWrap=root.querySelector('.map-canvas-wrap');
@@ -180,10 +180,10 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  }
 
  function route(){
-  const show=location.hash!=='#painel';
+  const show=location.hash!=='#painel'&&location.hash!=='#curva';
   document.body.classList.toggle('maps-view',show);
   root.hidden=!show;
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('current',a.hash===(show?'#mapas':'#painel')));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('current',a.hash===(show?'#mapas':location.hash)));
   if(location.hash==='#mundo'||location.hash==='#exterior'){
    mode='mundo';
    root.querySelectorAll('[data-map-mode]').forEach(x=>x.classList.toggle('selected',x.dataset.mapMode==='mundo'));
