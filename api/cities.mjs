@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { tseHeaders } from '../lib/tse.mjs';
 
 let config = null;
 const cache = new Map();
@@ -9,7 +10,7 @@ async function loadConfig() {
       const txt = await readFile(new URL('../lib/tse-municipios.json', import.meta.url), 'utf8');
       config = JSON.parse(txt);
     } catch {
-      const res = await fetch('https://resultados.tse.jus.br/oficial/ele2026/6258/config/mun-e006258-cm.json');
+      const res = await fetch('https://resultados.tse.jus.br/oficial/ele2026/6258/config/mun-e006258-cm.json', { headers: tseHeaders });
       config = await res.json();
     }
   }
@@ -36,7 +37,7 @@ export async function getLiveCities(uf) {
     const chunk = await Promise.all(batch.map(async m => {
       try {
         const url = `https://resultados.tse.jus.br/oficial/ele2026/6258/dados/${ufLower}/${ufLower}${m.cd}-c0001-e006258-u.json`;
-        const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        const r = await fetch(url, { signal: AbortSignal.timeout(6000), headers: tseHeaders });
         if (!r.ok) return { cd: m.cd, nome: m.nm, lula: 0, bolsonaro: 0, validos: 0, secoes: 0, totalSecoes: 0, apurado: false };
         const d = await r.json();
         const st = Number(d.s?.st || 0);

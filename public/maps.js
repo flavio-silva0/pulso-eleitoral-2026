@@ -229,7 +229,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    const blue=rows.reduce((s,d)=>s+d.blue,0);
    const sections=rows.reduce((s,d)=>s+(d.sections||0),0);
    const all=rows.reduce((s,d)=>s+(d.totalSections||0),0);
-   const available=codes.filter(c=>getAtlas()[c]?.data&&!getAtlas()[c]?.error).length;
+   const available=codes.filter(c=>!!getAtlas()[c]?.data).length;
    return `
     <article class="region-card">
      <div class="region-heading">
