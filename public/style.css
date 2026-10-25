@@ -258,6 +258,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
 
 .red strong,.red-text{color:#dc2626}
 .blue strong,.blue-text{color:#2563eb}
+.muted-text{color:var(--muted)}
 .footnote{font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.4}
 .map-bottom-bar, footer.app-footer {
   display: flex;
@@ -449,9 +450,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
   color: var(--muted);
   margin-top: 2px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .tip-track {
@@ -462,6 +461,10 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1600px;wid
   overflow: hidden;
   display: flex;
   margin: 7px 0 8px;
+}
+
+.tip-track.empty {
+  background: #e2e8f0;
 }
 
 .tip-track-lula {
@@ -791,14 +794,17 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
 
   /* Barra de Candidatos Responsiva */
   .map-candidate-bar.rbanner {
-    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
     gap: 8px;
     padding: 8px 8px 10px;
     margin-bottom: 6px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
   }
   .rb-photo {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
   }
   .rb-top {

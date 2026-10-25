@@ -4,7 +4,8 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
     const id = url.searchParams.get('id') || req.headers['x-forwarded-for'] || 'client';
-    const data = getPresenceData(id);
+    const isLeaving = url.searchParams.get('leave') === '1' || req.method === 'DELETE';
+    const data = getPresenceData(id, isLeaving);
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

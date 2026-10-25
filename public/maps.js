@@ -851,9 +851,11 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
       <div class="tip-sub">${esc(subText)}</div>
      </div>
 
-     <div class="tip-track">
-      <div class="tip-track-lula" style="width:${lPct}%"></div>
-      <div class="tip-track-bolsonaro" style="width:${bPct}%"></div>
+     <div class="tip-track ${hasData ? '' : 'empty'}">
+      ${hasData ? `
+       <div class="tip-track-lula" style="width:${lPct}%"></div>
+       <div class="tip-track-bolsonaro" style="width:${bPct}%"></div>
+      ` : ''}
      </div>
 
      <div class="tip-candidates">
@@ -863,7 +865,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
         <div class="tip-cand-name"><strong>Lula</strong> <small>PT · 13</small></div>
         <div class="tip-cand-votes">${hasData?fmt(lVotes)+' votos':'Sem apuração'}</div>
        </div>
-       <div class="tip-cand-pct red-text">${lPctStr}</div>
+       <div class="tip-cand-pct ${hasData ? 'red-text' : 'muted-text'}">${lPctStr}</div>
       </div>
 
       <div class="tip-candidate ${hasData&&bVotes>lVotes?'tip-lead tip-lead-bolsonaro':''}">
@@ -872,7 +874,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
         <div class="tip-cand-name"><strong>Flávio Bolsonaro</strong> <small>PL · 22</small></div>
         <div class="tip-cand-votes">${hasData?fmt(bVotes)+' votos':'Sem apuração'}</div>
        </div>
-       <div class="tip-cand-pct blue-text">${bPctStr}</div>
+       <div class="tip-cand-pct ${hasData ? 'blue-text' : 'muted-text'}">${bPctStr}</div>
       </div>
      </div>
 
