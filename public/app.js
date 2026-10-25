@@ -2,7 +2,7 @@ import {initMaps,heatColor} from './maps.js';
 const $=s=>document.querySelector(s),fmt=n=>n==null?'—':new Intl.NumberFormat('pt-BR').format(n),pct=n=>n==null?'—':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%',escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const regions={'Norte':['AC','AM','AP','PA','RO','RR','TO'],'Nordeste':['AL','BA','CE','MA','PB','PE','PI','RN','SE'],'Centro-Oeste':['DF','GO','MS','MT'],'Sudeste':['ES','MG','RJ','SP'],'Sul':['PR','RS','SC'],'Exterior':['ZZ']};
 let uf='BR',office='presidente',states={},result=null,sequence=0,favorites=[],atlasData={},geometry=null;
-try{favorites=JSON.parse(localStorage.getItem('pulso-favorites')||'[]');if(!Array.isArray(favorites))favorites=[];document.body.classList.toggle('dark',localStorage.getItem('pulso-theme')==='dark')}catch{}
+try{favorites=JSON.parse(localStorage.getItem('pulso-favorites')||'[]');if(!Array.isArray(favorites))favorites=[];}catch{}
 function toast(t){$('#toast').textContent=t;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',3200)}
 const color=(c,i)=>c.number==='13'?'#b45a4c':c.number==='22'?'#4d76ad':['#4d76ad','#b45a4c','#978339'][i%3];
 function selections(){
@@ -50,7 +50,7 @@ $('#uf').onchange=e=>select(e.target.value);document.querySelectorAll('[data-off
 $('#state-grid').onclick=e=>{const b=e.target.closest('[data-uf]');if(b)select(b.dataset.uf)};
 $('#favorites').onclick=e=>{const b=e.target.closest('[data-favorite]');if(b){const[o,u]=b.dataset.favorite.split(':');select(u,o)}};
 $('#favorite').onclick=()=>{const index=favorites.findIndex(f=>f.uf===uf&&f.office===office);if(index>=0)favorites.splice(index,1);else favorites.push({uf,office});try{localStorage.setItem('pulso-favorites',JSON.stringify(favorites))}catch{toast('Favoritos disponíveis apenas nesta sessão.')}selections()};
-$('#refresh').onclick=load;$('#theme').onclick=()=>{document.body.classList.toggle('dark');try{localStorage.setItem('pulso-theme',document.body.classList.contains('dark')?'dark':'light')}catch{}};
+$('#refresh').onclick=load;
 $('#fullscreen').onclick=()=>{document.body.classList.toggle('tv');$('#fullscreen').textContent=document.body.classList.contains('tv')?'⛶ Sair do telão':'⛶ Modo telão'};
 $('#export').onclick=()=>{if(!result?.data)return toast('Aguarde os dados para exportar.');const d=result.data;const cell=v=>'"'+String(v??'').replaceAll('"','""')+'"';const rows=[['UF','Cargo','Candidato','Número','Partido','Votos','Percentual','Carga TSE','Fonte'],...d.candidates.map(c=>[uf,office,c.name,c.number,c.party,c.votes,c.percent,d.generated,d.source])];const blob=new Blob(['\ufeff'+rows.map(r=>r.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`pulso-${office}-${uf}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Arquivo CSV exportado.')};
 $('#state-grid').insertAdjacentHTML('beforebegin','<div id="brazil-map" class="brazil-map"></div><p id="atlas-status" class="footnote">Carregando mapa e resultados por estado…</p>');
