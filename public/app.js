@@ -224,4 +224,4 @@ syncPresence();
 setInterval(syncPresence,15000);
 window.addEventListener('pagehide',()=>syncPresence(true));
 window.addEventListener('beforeunload',()=>syncPresence(true));
-try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();document.dispatchEvent(new Event('atlas-update'));loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,15000);setInterval(loadAtlas,15000);
+try{states=await(await fetch('/api/states')).json();selections();await load();geometry=await(await fetch('/brazil.json')).json();renderMap();document.dispatchEvent(new Event('atlas-update'));loadAtlas()}catch{toast('Uma parte do painel não pôde ser carregada. Recarregue a página.')}setInterval(load,3500);setInterval(loadAtlas,6000);

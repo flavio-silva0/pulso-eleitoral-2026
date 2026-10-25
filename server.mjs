@@ -8,10 +8,10 @@ const cache=new Map(),pending=new Map();
 try{await mkdir('.runtime',{recursive:true});}catch{}
 async function getResult(uf,office){
  const key=`${office}:${uf}`,old=cache.get(key);
- if(old&&Date.now()-old.checkedAt<(old.error?4000:15000))return old;
+ if(old&&Date.now()-old.checkedAt<(old.error?2000:3000))return old;
  if(pending.has(key))return pending.get(key);
  const job=(async()=>{try{
- const response=await fetch(sourceUrl(uf,office),{signal:AbortSignal.timeout(12000),headers:old?.etag?{...tseHeaders,'If-None-Match':old.etag}:tseHeaders});
+ const response=await fetch(`${sourceUrl(uf,office)}?_t=${Date.now()}`,{signal:AbortSignal.timeout(12000),headers:old?.etag?{...tseHeaders,'If-None-Match':old.etag}:tseHeaders});
  if(response.status===304&&old?.data){const v={...old,checkedAt:Date.now(),error:null};cache.set(key,v);return v;}
  if(!response.ok)throw Error(response.status===404?'Arquivo ainda não disponível para esta disputa.':`Fonte TSE indisponível (HTTP ${response.status}).`);
  const data=normalize(await response.json(),uf,office),history=[...(old?.history||[])];
@@ -22,9 +22,9 @@ async function getResult(uf,office){
 const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/brazil.json':'brazil.json','/world.json':'world.json','/maps.js':'maps.js','/lula.webp':'lula.webp','/bolsonaro.webp':'bolsonaro.webp','/municipios.json':'municipios.json'};
 let atlasAt=0,atlasData=null,atlasPending=null;
 async function atlas(){
- if(atlasData&&Date.now()-atlasAt<15000)return atlasData;
+ if(atlasData&&Date.now()-atlasAt<5000)return atlasData;
  if(atlasPending)return atlasPending;
- atlasPending=(async()=>{const entries=Object.keys(states),output={};let cursor=0;await Promise.all(Array.from({length:3},async()=>{while(cursor<entries.length){const uf=entries[cursor++];if(!uf)break;output[uf]=await getResult(uf,'presidente');await new Promise(r=>setTimeout(r,30));}}));atlasData=output;atlasAt=Date.now();return output;})().finally(()=>atlasPending=null);return atlasPending;
+ atlasPending=(async()=>{const entries=Object.keys(states),output={};let cursor=0;await Promise.all(Array.from({length:4},async()=>{while(cursor<entries.length){const uf=entries[cursor++];if(!uf)break;output[uf]=await getResult(uf,'presidente');await new Promise(r=>setTimeout(r,15));}}));atlasData=output;atlasAt=Date.now();return output;})().finally(()=>atlasPending=null);return atlasPending;
 }
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
@@ -67,6 +67,6 @@ if(!process.env.VERCEL){
   console.log('Pulso Eleitoral: http://localhost:'+ (process.env.PORT||3000));
   atlas().catch(()=>{});
  });
- setInterval(()=>atlas().catch(()=>{}),15000);
+ setInterval(()=>atlas().catch(()=>{}),5000);
 }
 export default server;

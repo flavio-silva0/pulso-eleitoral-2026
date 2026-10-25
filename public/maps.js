@@ -1403,7 +1403,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
 
  fetch('/world.json').then(r=>r.json()).then(g=>{world=g;render()}).catch(()=>{canvas.textContent='Não foi possível carregar a malha mundial.'});
  refresh();
- setInterval(refresh,15000);
+ setInterval(refresh,5000);
  document.addEventListener('atlas-update',()=>{lastCheckedAt=Date.now();render()});
  route();
 

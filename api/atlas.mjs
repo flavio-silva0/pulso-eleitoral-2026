@@ -4,12 +4,12 @@ const cache = new Map(), pending = new Map();
 
 async function getResult(uf, office) {
   const key = `${office}:${uf}`, old = cache.get(key);
-  if (old && Date.now() - old.checkedAt < (old.error ? 4000 : 15000)) return old;
+  if (old && Date.now() - old.checkedAt < (old.error ? 2000 : 3000)) return old;
   if (pending.has(key)) return pending.get(key);
 
   const job = (async () => {
     try {
-      const response = await fetch(sourceUrl(uf, office), {
+      const response = await fetch(`${sourceUrl(uf, office)}?_t=${Date.now()}`, {
         signal: AbortSignal.timeout(12000),
         headers: old?.etag ? {...tseHeaders, 'If-None-Match': old.etag} : tseHeaders
       });
@@ -37,7 +37,7 @@ async function getResult(uf, office) {
 let atlasAt = 0, atlasData = null, atlasPending = null;
 
 async function atlas() {
-  if (atlasData && Date.now() - atlasAt < 15000) return atlasData;
+  if (atlasData && Date.now() - atlasAt < 5000) return atlasData;
   if (atlasPending) return atlasPending;
 
   atlasPending = (async () => {
@@ -45,12 +45,12 @@ async function atlas() {
     const output = {};
     let cursor = 0;
     await Promise.all(
-      Array.from({length: 3}, async () => {
+      Array.from({length: 4}, async () => {
         while (cursor < entries.length) {
           const uf = entries[cursor++];
           if (!uf) break;
           output[uf] = await getResult(uf, 'presidente');
-          await new Promise(r => setTimeout(r, 30));
+          await new Promise(r => setTimeout(r, 15));
         }
       })
     );
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     const data = await atlas();
     res.writeHead(200, {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 's-maxage=15, stale-while-revalidate=30'
+      'Cache-Control': 's-maxage=3, stale-while-revalidate=6'
     });
     return res.end(JSON.stringify(data));
   } catch (e) {

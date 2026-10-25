@@ -5,12 +5,12 @@ const cache = new Map(), pending = new Map();
 
 async function getResult(uf, office) {
   const key = `${office}:${uf}`, old = cache.get(key);
-  if (old && Date.now() - old.checkedAt < (old.error ? 4000 : 15000)) return old;
+  if (old && Date.now() - old.checkedAt < (old.error ? 2000 : 3000)) return old;
   if (pending.has(key)) return pending.get(key);
 
   const job = (async () => {
     try {
-      const response = await fetch(sourceUrl(uf, office), {
+      const response = await fetch(`${sourceUrl(uf, office)}?_t=${Date.now()}`, {
         signal: AbortSignal.timeout(12000),
         headers: old?.etag ? {...tseHeaders, 'If-None-Match': old.etag} : tseHeaders
       });
