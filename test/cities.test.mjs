@@ -37,7 +37,9 @@ test('contagem municipal ausente não é apresentada como zero votos',()=>{
  assert.ok(archive.reconciliation.some(r=>r.uf==='SP'));
 });
 test('acompanhamento e projeção encerrados e entradas inválidas rejeitadas',()=>{
- for(const path of ['presence','projecao'])assert.equal(archivedResponse(path).status,410);
+ assert.equal(archivedResponse('presence').status,410);
+ for(const method of ['logit','bayesian','t1_remainder','direct']){const r=archivedResponse('projecao',new URLSearchParams({method}));assert.equal(r.status,200);assert.equal(r.body.demonstration,true);assert.equal(r.body.ufs.length,27);assert.deepEqual(r.body.history,[]);}
+ assert.equal(archivedResponse('projecao',new URLSearchParams('method=invalid')).status,400);
  for(const query of ['uf=XX','office=invalid','office=governador&uf=BR'])assert.equal(archivedResponse('results',new URLSearchParams(query)).status,400);
  assert.equal(archivedResponse('cities',new URLSearchParams('uf=XX')).status,400);
  const missing=archivedResponse('results',new URLSearchParams('office=governador&uf=SP')).body;

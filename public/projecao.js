@@ -58,48 +58,19 @@ function Gf(f0, f1, rIn, rOut) {
 }
 const cp = pos => (Math.max(0, Math.min(1, pos)) - 0.5) * 180;
 
-// Tremor ao vivo da agulha (proporcional à incerteza, estilo Eg do ApuraLogo)
-let tremorTimer = null;
-let tremorSpec = null;
-
-function randNormal() {
-  let u = 0;
-  while (u === 0) u = Math.random();
-  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * Math.random());
-}
-
-function updateNeedleTremorSpec(p) {
-  const div = p?.div || {};
-  const s = div.s != null ? div.s : (p?.flavioPct ?? 50);
-  const loS = div.loS ?? p?.ci95?.flavioMin ?? 45;
-  const hiS = div.hiS ?? p?.ci95?.flavioMax ?? 55;
-  const tremor = div.tremor !== false && (hiS - loS) > 0.05;
-  tremorSpec = { s, loS, hiS, tremor };
-
-  if (!tremorTimer) {
-    tremorTimer = setInterval(() => {
-      if (document.hidden || !active() || !tremorSpec?.tremor) return;
-      if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const needle = document.querySelector('#pj-hero .pt-agulha');
-      if (!needle) return;
-      const span = Math.max(0.1, tremorSpec.hiS - tremorSpec.loS);
-      const amp = Math.max(0.02, 0.05 * span);
-      const jitter = Math.max(-1, Math.min(1, randNormal() / 2));
-      const pos = (tremorSpec.s + amp * jitter) / 100;
-      needle.style.transform = `rotate(${cp(pos).toFixed(2)}deg)`;
-    }, 700);
-  }
-}
+// Mostrador fixo da demonstração após encerramento.
+function updateNeedleTremorSpec() {}
 
 function inject() {
   const html = `
   <section id="projecao-page" class="projecao-page" hidden aria-labelledby="pj-title">
    <div class="pj-head">
     <div>
-     <span class="pj-eyebrow">MODELO ESTATÍSTICO AO VIVO · PRESIDENTE · BRASIL</span>
-     <h2 id="pj-title">Projeção do Resultado Final</h2>
-     <p class="pj-sub" id="pj-sub">Projeção em escala logit com comparação município a município frente ao 1º turno e margem de confiança calibrada.</p>
+     <span class="pj-eyebrow">MODELO DESENVOLVIDO · DEMONSTRAÇÃO · ELEIÇÃO ENCERRADA</span>
+     <h2 id="pj-title">Projeção estatística</h2>
+     <p class="pj-sub" id="pj-sub">Modelo logit original, nesta demonstração com a alternativa por UF e dados arquivados após a eleição.</p>
     </div>
+    <p class="pj-sub">Modelo desenvolvido por Flavio Silva. Demonstração recalculada com os resultados arquivados das 27 UFs, sem o exterior. Não é uma previsão registrada durante a apuração; a votação oficial está na aba Resultados. O método logit usa aqui a alternativa por UF do motor original.</p>
     <div class="pj-controls">
      <div class="pj-seg" role="group" aria-label="Método de projeção">
       <button data-pj-m="logit" title="Regressão ponderada em escala logit sobre os municípios apurados com variância clusterizada">Logit Municipal</button>
@@ -107,7 +78,7 @@ function inject() {
       <button data-pj-m="t1_remainder" title="Aplica o resultado exato do 1º turno aos votos ainda não apurados">1º Turno no restante</button>
       <button data-pj-m="direct" title="Extrapola a proporção atual observada em cada UF">Extrapolação direta</button>
      </div>
-     <button id="pj-refresh-btn" class="pj-refresh-btn" title="Atualizar projeção agora">↻ Atualizar <small id="pj-countdown">5s</small></button>
+     <button id="pj-refresh-btn" class="pj-refresh-btn" title="Recarregar demonstração arquivada">↻ Recarregar arquivo</button>
     </div>
    </div>
 
@@ -115,7 +86,7 @@ function inject() {
    <div class="pj-top-grid">
     <!-- Coluna Esquerda: Card Velocímetro Principal -->
     <div id="pj-hero" class="pj-hero">
-     <div class="pj-loading">Calculando projeção ao vivo…</div>
+     <div class="pj-loading">Carregando demonstração preservada…</div>
     </div>
 
     <!-- Coluna Direita: 3 KPIs + Gráfico Histórico da Projeção -->
@@ -125,9 +96,9 @@ function inject() {
      <div class="pj-panel pj-chart-panel">
       <div class="pj-panel-head">
        <div>
-        <span class="pj-panel-eyebrow">LINHA DO TEMPO AO VIVO</span>
+        <span class="pj-panel-eyebrow">REGISTRO DO MODELO</span>
         <h3 class="pj-panel-title">Evolução da Projeção Final</h3>
-        <p class="pj-panel-desc">Como a estimativa final do modelo se comportou a cada avanço da apuração nacional.</p>
+        <p class="pj-panel-desc">O histórico de previsões da noite não foi preservado neste arquivo.</p>
        </div>
        <div class="pj-chart-legend">
         <span><i class="pj-sw pj-l"></i>Lula (Projetado)</span>
@@ -202,11 +173,11 @@ function inject() {
      </article>
      <article>
       <strong>2. Reponderação pelo Universo Nacional</strong>
-      <p>O deslocamento médio ponderado é aplicado de volta à distribuição completa dos 5.570 municípios brasileiros do 1º turno, eliminando o viés de estados ou cidades que apuram mais cedo.</p>
+      <p>O deslocamento médio ponderado é aplicado de volta à distribuição completa dos 5.570 municípios brasileiros do 1º turno, buscando reduzir o viés de estados ou cidades que apuram mais cedo.</p>
      </article>
      <article>
       <strong>3. Variância Sanduíche e Sombra de Incerteza</strong>
-      <p>O erro-padrão combina a dispersão observada entre municípios com a fração de votos ainda não apurados. A sombra no mostrador equivale ao intervalo de 99% (±2,58 desvios) calibrado em 440 disputas.</p>
+      <p>O erro-padrão combina a dispersão observada entre municípios com a fração de votos ainda não apurados. A sombra no mostrador equivale ao intervalo de 99% (±2,58 desvios) segundo os parâmetros do modelo original.</p>
      </article>
      <article>
       <strong>4. Critério para Cravar Resultado</strong>
@@ -376,8 +347,8 @@ function renderHero(d) {
     setTxt('[data-pj-bind="lulaProjVotes"]', `${num(p.lulaVotes)} votos`);
     setTxt('[data-pj-bind="flavioProjPct"]', pc(p.flavioPct, 2));
     setTxt('[data-pj-bind="flavioProjVotes"]', `${num(p.flavioVotes)} votos`);
-    setTxt('[data-pj-bind="oficialRotL"]', `Apuração oficial às ${hourStr}`);
-    setTxt('[data-pj-bind="oficialRotF"]', `Apuração oficial às ${hourStr}`);
+    setTxt('[data-pj-bind="oficialRotL"]', `Dados arquivados · 27 UFs`);
+    setTxt('[data-pj-bind="oficialRotF"]', `Dados arquivados · 27 UFs`);
     setTxt('[data-pj-bind="lulaOficialPct"]', pc(c.lulaPct, 2));
     setTxt('[data-pj-bind="lulaOficialVotes"]', `${num(c.lulaVotes)} votos`);
     setTxt('[data-pj-bind="flavioOficialPct"]', pc(c.flavioPct, 2));
@@ -415,7 +386,7 @@ function renderHero(d) {
 
   const dialSvg = buildDialSvg(p);
   const sombraTooltip =
-    'A sombra é a margem em que a projeção ainda pode mudar de lado: a menor que nunca errou nas 440 disputas reapuradas, e se estreita conforme as urnas chegam. Quando ela sai da linha do meio, a projeção crava o resultado; a parte mais escura é o mais provável.';
+    'A sombra é a margem em que a projeção ainda pode mudar de lado: definida pelos parâmetros do modelo original, e se estreita conforme as urnas chegam. Quando ela sai da linha do meio, a projeção crava o resultado; a parte mais escura é o mais provável.';
 
   hero.innerHTML = `
    <div class="ponteiro com-duelo" style="--pe:#dc2626;--pd:#2563eb">
@@ -423,7 +394,7 @@ function renderHero(d) {
     <div class="pt-cabeca pt-andamento">
      <span class="pt-pct"><b class="num" data-pj-bind="natPct">${pc(natP, 2)}</b> das seções apuradas</span>
      <span class="pt-and-dir">
-      <span class="pill vivo"><i></i>Ao vivo</span>
+      <span class="pill">Demonstração</span>
       <span class="pt-hora" data-pj-bind="hourStr" title="Hora da última totalização do TSE">${hourStr}</span>
      </span>
     </div>
@@ -470,12 +441,12 @@ function renderHero(d) {
       <span class="ptb-vt" data-pj-bind="flavioProjVotes">${num(p.flavioVotes)} votos</span>
      </div>
      <div class="ptb-cx ag esq">
-      <span class="ptb-rot" data-pj-bind="oficialRotL">Apuração oficial às ${hourStr}</span>
+      <span class="ptb-rot" data-pj-bind="oficialRotL">Dados arquivados · 27 UFs</span>
       <b class="ptb-pct num" data-pj-bind="lulaOficialPct">${pc(c.lulaPct, 2)}</b>
       <span class="ptb-vt" data-pj-bind="lulaOficialVotes">${num(c.lulaVotes)} votos</span>
      </div>
      <div class="ptb-cx ag dir">
-      <span class="ptb-rot" data-pj-bind="oficialRotF">Apuração oficial às ${hourStr}</span>
+      <span class="ptb-rot" data-pj-bind="oficialRotF">Dados arquivados · 27 UFs</span>
       <b class="ptb-pct num" data-pj-bind="flavioOficialPct">${pc(c.flavioPct, 2)}</b>
       <span class="ptb-vt" data-pj-bind="flavioOficialVotes">${num(c.flavioVotes)} votos</span>
      </div>
@@ -558,7 +529,7 @@ function renderChart(d) {
 
   const hist = d?.history || [];
   if (hist.length < 2) {
-    el.innerHTML = '<p class="pj-empty">O gráfico temporal se forma automaticamente conforme novas atualizações chegam.</p>';
+    el.innerHTML = '<p class="pj-empty">Sem série histórica de projeções preservada. O mostrador acima apresenta uma demonstração recalculada com os dados arquivados.</p>';
     return;
   }
 
@@ -755,13 +726,13 @@ function render() {
     statusEl.textContent = state.error
       ? `⚠ ${state.error}`
       : d
-        ? `Sincronizado às ${new Date(d.checkedAt || d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
+        ? `Arquivo de demonstração · captura às ${new Date(d.checkedAt || d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
         : '';
   }
 
   const sub = $('#pj-sub');
   if (sub) {
-    if (state.method === 'logit') sub.textContent = 'Projeção em escala logit com comparação município a município frente ao 1º turno e margem de confiança calibrada.';
+    if (state.method === 'logit') sub.textContent = 'Modelo logit original, nesta demonstração com a alternativa por UF e dados arquivados após a eleição.';
     else if (state.method === 'bayesian') sub.textContent = 'Modelo preditivo estratificado por estado e região com regularização Bayesiana de swing.';
     else if (state.method === 't1_remainder') sub.textContent = 'Modelo conservador: votos faltantes de cada UF votam exatamente como no 1º turno.';
     else sub.textContent = 'Extrapolação direta: mantém para o restante de cada UF a proporção exata observada até agora.';
@@ -783,7 +754,7 @@ async function load(force = false) {
   if (refreshBtn) refreshBtn.classList.add('loading');
 
   try {
-    const res = await fetch(`/api/projecao?method=${state.method}&_t=${Date.now()}`, {cache: 'no-store'});
+    const res = await fetch(`/api/projecao?method=${state.method}`, {cache: 'no-store'});
     if (!res.ok) throw Error(`HTTP ${res.status}`);
     const data = await res.json();
     state.data = data;
@@ -807,7 +778,7 @@ function route() {
   if (on) {
     document.querySelectorAll('nav a').forEach(a => a.classList.toggle('current', a.hash === '#projecao'));
     render();
-    if (!state.data || Date.now() - (state.data.checkedAt || state.data.updatedAt || 0) > 4000) load();
+    if (!state.data) load();
   }
 }
 
@@ -824,15 +795,3 @@ new ResizeObserver(([e]) => {
 window.addEventListener('hashchange', route);
 route();
 load();
-
-// Loop ao vivo de 1s para contagem regressiva e atualização automática a cada 5s
-setInterval(() => {
-  if (!active() || document.hidden) return;
-  state.nextRefreshSec = Math.max(0, state.nextRefreshSec - 1);
-  const cd = $('#pj-countdown');
-  if (cd) cd.textContent = `${state.nextRefreshSec}s`;
-  if (state.nextRefreshSec <= 0) {
-    state.nextRefreshSec = 5;
-    load();
-  }
-}, 1000);
