@@ -80,11 +80,11 @@ function inject() {
     <div>
      <span class="cv-eyebrow">1º TURNO × 2º TURNO · PRESIDENTE · BRASIL</span>
      <h2 id="cv-title">A curva da apuração</h2>
-     <p class="cv-sub" id="cv-sub">A contagem de hoje comparada com a de 4 de outubro, no mesmo horário ou no mesmo ponto da apuração.</p>
+     <p class="cv-sub" id="cv-sub">A contagem de 25/out comparada com a de 4 de outubro, no mesmo horário ou no mesmo ponto da apuração.</p>
     </div>
     <div class="cv-controls">
      <div class="cv-seg" role="group" aria-label="Eixo horizontal">
-      <button data-cv-x="aligned" title="Alinha as apurações: 19h de hoje com 17h do 1º turno">19h com 17h</button>
+      <button data-cv-x="aligned" title="Alinha as apurações: 19h de 25/out com 17h do 1º turno">19h com 17h</button>
       <button data-cv-x="time" title="Horário de Brasília sem ajuste">Horário real</button>
       <button data-cv-x="pct" title="Percentual de seções totalizadas">Por % apurado</button>
      </div>
@@ -93,7 +93,7 @@ function inject() {
       <button data-cv-y="valid" title="Percentual sobre todos os votos válidos (no 1º turno inclui os demais candidatos)">% dos válidos</button>
      </div>
      <div class="cv-seg" role="group" aria-label="Escala">
-      <button data-cv-zoom="now">Até agora</button>
+      <button data-cv-zoom="now">Até o último registro</button>
       <button data-cv-zoom="all">Noite inteira</button>
      </div>
     </div>
@@ -102,7 +102,7 @@ function inject() {
    <div class="cv-panel">
     <div class="cv-legend">
      <span><i class="cv-sw cv-l"></i>Lula</span><span><i class="cv-sw cv-f"></i>Flávio</span>
-     <span><svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="currentColor" stroke-width="3"/></svg>2º turno (hoje)</span>
+     <span><svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="currentColor" stroke-width="3"/></svg>2º turno (25/out)</span>
      <span><svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4" opacity=".6"/></svg>1º turno (4/out)</span>
      <span id="cv-status" class="cv-status"></span>
     </div>
@@ -160,7 +160,7 @@ function render() {
 
   const sub = $('#cv-sub');
   if (sub) {
-    if (state.x === 'aligned') sub.textContent = 'Apurações alinhadas: 19h de hoje com 17h de 4 de outubro (+2h de diferença no início do TSE).';
+    if (state.x === 'aligned') sub.textContent = 'Apurações alinhadas: 19h de 25/out com 17h de 4 de outubro (+2h de diferença no início do TSE).';
     else if (state.x === 'time') sub.textContent = 'Horário do relógio de Brasília, sem ajuste de horário de início das apurações.';
     else sub.textContent = 'Comparação direta pelo percentual de seções totalizadas no Brasil e exterior.';
   }
@@ -242,7 +242,7 @@ function renderCards(t1, t2) {
    </article>
    <article class="cv-card">
     <span class="cv-k">Margem Lula − Flávio</span>
-    <div class="cv-pair cv-margin"><span>Hoje ${marginHtml(m2)}</span><span>1º turno ${marginHtml(m1)}</span></div>
+    <div class="cv-pair cv-margin"><span>2º turno ${marginHtml(m2)}</span><span>1º turno ${marginHtml(m1)}</span></div>
     <small>${deltaText}</small>
    </article>`;
 }
@@ -330,7 +330,7 @@ function hover(x) {
 
   let head = '';
   if (state.x === 'aligned') {
-    head = `Hoje às ${hhmm(x)} · 1º turno às ${hhmm(x - 120)}`;
+    head = `2º turno às ${hhmm(x)} · 1º turno às ${hhmm(x - 120)}`;
   } else if (state.x === 'time') {
     head = `Às ${hhmm(x)} (mesmo relógio)`;
   } else {
