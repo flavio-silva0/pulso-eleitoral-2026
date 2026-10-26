@@ -231,7 +231,7 @@ function renderCards(t1, t2) {
 
   $('#cv-cards').innerHTML = `
    <article class="cv-card">
-    <span class="cv-k">2º turno · agora</span>
+    <span class="cv-k">2º turno · último registro</span>
     ${now ? pair(nowM[0], nowM[1]) : '<div class="cv-pair cv-muted">Sem registro histórico neste horário</div>'}
     <small>${now ? `${pc(now.p)} das seções · carga das ${hhmm(now.t)}${state.x === 'aligned' ? ` (+${Math.max(0, Math.round(now.t - 1140))}m)` : ''}` : 'A contagem nacional do 2º turno iniciou às 19:00.'}</small>
    </article>
