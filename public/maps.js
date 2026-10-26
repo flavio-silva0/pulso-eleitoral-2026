@@ -17,6 +17,127 @@ const aliases={'tchequia':'republicatcheca','chequia':'republicatcheca','paisesb
 const key=s=>aliases[norm(s)]||norm(s);
 const small={Singapura:[103.82,1.35],Malta:[14.38,35.94],Bahrain:[50.55,26.07],Bahrein:[50.55,26.07],'Hong Kong':[114.17,22.32],'Cabo Verde':[-23.61,15.12],Maurício:[57.55,-20.2],Luxemburgo:[6.13,49.61],Andorra:[1.52,42.51],'São Tomé e Príncipe':[6.73,.34],Maldivas:[73.5,4.17],Barbados:[-59.55,13.19]};
 
+const PT_TONES=['#fca5a5','#f87171','#ef4444','#dc2626'];
+const PL_TONES=['#93c5fd','#60a5fa','#3b82f6','#2563eb'];
+const MUNI_NODATA='#e2e8f0';
+const HIDE_LABEL_UFS=new Set(['RN','PB','PE','AL','SE','ES','RJ','DF']);
+
+function muniStep(margin){
+ const m=Math.abs(margin);
+ return m<0.10?0:m<0.25?1:m<0.45?2:3;
+}
+
+function muniFillFromMargin(leader,margin){
+ if(!leader)return MUNI_NODATA;
+ const step=muniStep(margin);
+ return Number(leader)===13?PT_TONES[step]:PL_TONES[step];
+}
+
+function decodeBrasilTopo(A){
+ const [N,I]=A.transform.scale,[U,Q]=A.transform.translate;
+ const nt=A.objects.municipios.geometries;
+ const cn=A.arcs.map(S=>{
+  let G=0,K=0;
+  return S.map(([ye,Ae])=>(G+=ye,K+=Ae,[(G*N+U)/1e3,-(K*I+Q)/1e3]));
+ });
+ let st=Infinity,a=Infinity;
+ for(const S of cn)for(const [G,K] of S){
+  if(G<st)st=G;
+  if(K<a)a=K;
+ }
+ const sc=0.096,ox=14,oy=12;
+ for(const S of cn)for(const G of S){
+  G[0]=ox+(G[0]-st)*sc;
+  G[1]=oy+(G[1]-a)*sc;
+ }
+ const En=S=>{
+  const G=[];
+  for(const K of S){
+   const ye=K<0?cn[~K].slice().reverse():cn[K];
+   for(let Ae=G.length?1:0;Ae<ye.length;Ae++)G.push(ye[Ae]);
+  }
+  return G;
+ };
+ const jn=S=>S.type==='Polygon'?[S.arcs]:S.type==='MultiPolygon'?S.arcs:[];
+ const ce=S=>{
+  let G=0;
+  for(let K=0,ye=S.length-1;K<S.length;ye=K++)G+=(S[ye][0]+S[K][0])*(S[ye][1]-S[K][1]);
+  return G/2;
+ };
+ const ht=S=>{
+  let G=0,K=0,ye=0;
+  for(let Ae=0,he=S.length-1;Ae<S.length;he=Ae++){
+   const Ke=S[he][0]*S[Ae][1]-S[Ae][0]*S[he][1];
+   G+=Ke;K+=(S[he][0]+S[Ae][0])*Ke;ye+=(S[he][1]+S[Ae][1])*Ke;
+  }
+  return G?[K/(3*G),ye/(3*G)]:S[0];
+ };
+ const gn=cn.map(()=>[]);
+ const munis=nt.map((S,G)=>{
+  let d='',ye=null,Ae=0,he=0,Ke=Infinity,Je=Infinity,qe=-Infinity,je=-Infinity;
+  for(const se of jn(S)){
+   se.forEach((tt,Ze)=>{
+    const At=En(tt);
+    for(let Bt=0;Bt<At.length;Bt++){
+     const [px,py]=At[Bt];
+     d+=(Bt?'L':'M')+px.toFixed(1)+','+py.toFixed(1);
+     if(px<Ke)Ke=px;if(py<Je)Je=py;if(px>qe)qe=px;if(py>je)je=py;
+    }
+    d+='Z';
+    if(Ze===0){
+     const Bt=Math.abs(ce(At));
+     he+=Bt;
+     if(Bt>Ae){Ae=Bt;ye=At;}
+    }
+    for(const Bt of tt)gn[Bt<0?~Bt:Bt].push(G);
+   });
+  }
+  const re=S.properties;
+  return {i:G,id:String(re.id),name:re.n,uf:re.uf,pop:re.p,d,c:ye?ht(ye):[0,0],km2:he,box:[Ke,Je,qe,je]};
+ });
+ let edgeD='',ufD='',muniD='';
+ const ufOutlineD={};
+ cn.forEach((S,G)=>{
+  const K=[...new Set(gn[G])];
+  const ye=K.length<2?'edge':munis[K[0]].uf!==munis[K[1]].uf?'uf':'muni';
+  let seg='';
+  for(let i=0;i<S.length;i++)seg+=(i?'L':'M')+S[i][0].toFixed(1)+','+S[i][1].toFixed(1);
+  if(ye==='edge')edgeD+=seg;
+  else if(ye==='uf')ufD+=seg;
+  else muniD+=seg;
+  if(ye!=='muni'){
+   for(const he of K){
+    const u=munis[he].uf;
+    ufOutlineD[u]=(ufOutlineD[u]||'')+seg;
+   }
+  }
+ });
+ const ufs={};
+ const skipBox=new Set(['2605459']);
+ for(const S of munis){
+  const G=ufs[S.uf]||(ufs[S.uf]={uf:S.uf,munis:[],pop:0,box:[Infinity,Infinity,-Infinity,-Infinity],cx:0,cy:0,km2:0,d:''});
+  G.munis.push(S.i);
+  G.pop+=S.pop;
+  G.km2+=S.km2;
+  G.d+=S.d;
+  if(!skipBox.has(S.id)){
+   G.box[0]=Math.min(G.box[0],S.box[0]);
+   G.box[1]=Math.min(G.box[1],S.box[1]);
+   G.box[2]=Math.max(G.box[2],S.box[2]);
+   G.box[3]=Math.max(G.box[3],S.box[3]);
+  }
+  G.cx+=S.c[0]*S.km2;
+  G.cy+=S.c[1]*S.km2;
+ }
+ for(const S of Object.values(ufs)){
+  S.c=[S.cx/S.km2,S.cy/S.km2];
+  S.outlineD=ufOutlineD[S.uf]||'';
+ }
+ const sortedOrder=munis.map((m,i)=>[m.id,i]).sort((a,b)=>a[0]<b[0]?-1:1).map(x=>x[1]);
+ const byId=new Map(munis.map((m,i)=>[m.id,i]));
+ return {munis,ufs,lines:{edge:edgeD,uf:ufD,muni:muniD},sortedOrder,byId};
+}
+
 export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRefresh}){
  let mode='brasil',world=null,exterior=null,selected=null,lastCheckedAt=Date.now();
  let citySearch='',cityFilter='all',cityLimit=60;
@@ -27,6 +148,8 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  let gestureMoved=false,justGestured=false,targetPlaceCandidate=null;
  const liveCitiesCache=new Map();
  const loadingStates=new Set();
+ let brasilGeo=null,muniLiveFeed=null,muniVotesById=new Map();
+ let brasilSvgBuilt=false;
 
  const main=document.querySelector('main');
  main.insertAdjacentHTML('afterbegin',`
@@ -150,6 +273,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    tooltip.hidden=true;
    activeTooltipPlace=null;
   }
+  canvas.querySelectorAll('.uf-hit.uf-hovered').forEach(el=>el.classList.remove('uf-hovered'));
  }
 
  function updateTooltipPos(clientX,clientY){
@@ -474,6 +598,16 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   const geo=mode==='brasil'?getBrazil():world;
   const project=mode==='brasil'?([x,y])=>[(x+75)*10,(7-y)*10]:([x,y])=>[(x+180)*1000/360,(85-y)*520/170];
   if(mode==='brasil'){
+   if(brasilGeo&&brasilGeo.ufs[code]){
+    const b=brasilGeo.ufs[code].box;
+    const bw=b[2]-b[0],bh=b[3]-b[1];
+    if(bw>0&&bh>0){
+     const fitZoom=Math.min(w/(bw*1.35),h/(bh*1.35)),targetZoom=Math.max(1.8,Math.min(6.5,fitZoom));
+     const cx=b[0]+bw/2,cy=b[1]+bh/2;
+     animateView([cx-(w/targetZoom)/2,cy-(h/targetZoom)/2],targetZoom,750);
+     return;
+    }
+   }
    const feat=geo?.features?.find(f=>ids[f.properties.codarea]===code);
    if(feat){
     const bbox=getFeatureBBox(feat.geometry.coordinates,project);
@@ -530,6 +664,27 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    if(!res.ok)throw new Error('Falha ao obter cidades');
    const data=await res.json();
    liveCitiesCache.set(uf,data);
+   if(brasilGeo){
+    const ufMunis=brasilGeo.ufs[uf]?.munis||[];
+    const byName=new Map(ufMunis.map(idx=>[norm(brasilGeo.munis[idx].name),brasilGeo.munis[idx].id]));
+    for(const c of data){
+     const id=c.cdi||byName.get(norm(c.nome));
+     if(id&&(c.apurado||c.secoes>0)){
+      const tot=(c.lula||0)+(c.bolsonaro||0);
+      muniVotesById.set(String(id),{
+       f:c.totalSecoes?c.secoes/c.totalSecoes:1,
+       leader:c.lula>=c.bolsonaro?13:22,
+       margin:tot?Math.abs(c.lula-c.bolsonaro)/tot:0,
+       lula:c.lula||0,
+       bolsonaro:c.bolsonaro||0,
+       validos:c.validos||tot,
+       secoes:c.secoes||0,
+       totalSecoes:c.totalSecoes||0
+      });
+     }
+    }
+    if(mode==='brasil'&&brasilSvgBuilt)updateBrasilMapColors();
+   }
   }catch(e){
    console.error('Erro ao buscar cidades ao vivo:',e);
   }finally{
@@ -849,7 +1004,93 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    return '';
   }
 
-  function renderTooltipContent(code, placeName){
+  function getMuniVoteInfo(muniIdx){
+   if(!brasilGeo||muniIdx==null)return null;
+   const m=brasilGeo.munis[muniIdx];
+   if(!m)return null;
+   const direct=muniVotesById.get(m.id);
+   if(direct)return {m, ...direct};
+   return {m, f:0, leader:0, margin:0, lula:0, bolsonaro:0, validos:0};
+  }
+
+  function renderMuniTooltipContent(muniIdx){
+   const info=getMuniVoteInfo(muniIdx);
+   if(!info)return '';
+   const {m,f,leader,margin,lula,bolsonaro,validos}=info;
+   const hasData=f>0&&validos>0;
+   let lPct=50,bPct=50,lVotes=lula,bVotes=bolsonaro;
+   if(hasData){
+    if(lVotes+bVotes>0){
+     lPct=lVotes/(lVotes+bVotes)*100;
+     bPct=bVotes/(lVotes+bVotes)*100;
+    }else{
+     const leadShare=(1+margin)/2*100;
+     const otherShare=100-leadShare;
+     lPct=Number(leader)===13?leadShare:otherShare;
+     bPct=Number(leader)===22?leadShare:otherShare;
+     lVotes=Math.round(validos*(lPct/100));
+     bVotes=Math.max(0,validos-lVotes);
+    }
+   }
+   const lPctStr=hasData?lPct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'—';
+   const bPctStr=hasData?bPct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'—';
+   const diff=Math.abs(lVotes-bVotes);
+   let badgeHtml='';
+   if(!hasData){
+    badgeHtml=`<span class="tip-badge badge-gray">Aguardando votos</span>`;
+   }else if(lPct>bPct){
+    badgeHtml=`<span class="tip-badge badge-red">● Lula +${fmt(diff)}</span>`;
+   }else if(bPct>lPct){
+    badgeHtml=`<span class="tip-badge badge-blue">● Flávio +${fmt(diff)}</span>`;
+   }else{
+    badgeHtml=`<span class="tip-badge badge-gray">Empate</span>`;
+   }
+   const secPct=(f*100).toFixed(1).replace('.',',')+'%';
+   const stateName=getStates()[m.uf]||m.uf;
+   const subText=`${stateName} · ${secPct} das seções apuradas`;
+   return `
+    <div class="tip-header">
+     <div class="tip-title-row">
+      <div class="tip-title">${esc(m.name)} <span class="tip-uf-pill">${esc(m.uf)}</span></div>
+      ${badgeHtml}
+     </div>
+     <div class="tip-sub">${esc(subText)}</div>
+    </div>
+    <div class="tip-track ${hasData ? '' : 'empty'}">
+     ${hasData ? `
+      <div class="tip-track-lula" style="width:${lPct}%"></div>
+      <div class="tip-track-bolsonaro" style="width:${bPct}%"></div>
+     ` : ''}
+    </div>
+    <div class="tip-candidates">
+     <div class="tip-candidate ${hasData&&lPct>=bPct?'tip-lead tip-lead-lula':''}">
+      <img src="/lula.webp" class="tip-photo tip-photo-lula" alt="Lula">
+      <div class="tip-candidate-info">
+       <div class="tip-cand-name"><strong>Lula</strong> <small>PT · 13</small></div>
+       <div class="tip-cand-votes">${hasData?fmt(lVotes)+' votos':'Sem apuração'}</div>
+      </div>
+      <div class="tip-cand-pct ${hasData ? 'red-text' : 'muted-text'}">${lPctStr}</div>
+     </div>
+     <div class="tip-candidate ${hasData&&bPct>lPct?'tip-lead tip-lead-bolsonaro':''}">
+      <img src="/bolsonaro.webp" class="tip-photo tip-photo-bolsonaro" alt="Flávio Bolsonaro">
+      <div class="tip-candidate-info">
+       <div class="tip-cand-name"><strong>Flávio Bolsonaro</strong> <small>PL · 22</small></div>
+       <div class="tip-cand-votes">${hasData?fmt(bVotes)+' votos':'Sem apuração'}</div>
+      </div>
+      <div class="tip-cand-pct ${hasData ? 'blue-text' : 'muted-text'}">${bPctStr}</div>
+     </div>
+    </div>
+    <div class="tip-footer">
+     <span class="tip-total">Total: <b>${fmt(validos)}</b> válidos</span>
+     <span class="tip-action">Clique para ver ${esc(m.uf)} ↗</span>
+    </div>
+   `;
+  }
+
+  function renderTooltipContent(code, placeName, muniIdx=null){
+   if(mode==='brasil'&&muniIdx!=null&&brasilGeo){
+    return renderMuniTooltipContent(Number(muniIdx));
+   }
    if(mode==='brasil'){
     const d=dataFor(code);
     const stateName=getStates()[code]||placeName||code;
@@ -1104,42 +1345,120 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   svg.setAttribute('viewBox',`${pan[0]} ${pan[1]} ${width/zoom} ${height/zoom}`);
  }
 
+ function buildUfLabelsHtml(){
+  if(!brasilGeo)return '';
+  const allUfs=Object.keys(brasilGeo.ufs);
+  let html='';
+  for(const uf of allUfs){
+   if(HIDE_LABEL_UFS.has(uf)&&selected!==uf)continue;
+   const u=brasilGeo.ufs[uf];
+   const d=dataFor(uf);
+   const tot=(d?.red||0)+(d?.blue||0);
+   const has=tot>0;
+   const isLula=(d?.red||0)>=(d?.blue||0);
+   const leadPct=has?Math.round(Math.max(d.red,d.blue)/tot*100):0;
+   const sqColor=isLula?'#dc2626':'#2563eb';
+   const stateName=getStates()[uf]||uf;
+   const dim=selected&&selected!==uf?' opacity="0.25"':'';
+   const cx=u.c[0].toFixed(1);
+   html+=`<g class="uf-label-group" data-uf="${uf}" data-name="${esc(stateName)}"${dim}>`;
+   html+=`<text x="${cx}" y="${(u.c[1]-(has?2.2:0)).toFixed(1)}" text-anchor="middle" class="uf-label-text">${uf}</text>`;
+   if(has){
+    html+=`<rect x="${(u.c[0]-12.5).toFixed(1)}" y="${(u.c[1]+1.2).toFixed(1)}" width="4.8" height="4.8" rx="1" fill="${sqColor}" stroke="#ffffff" stroke-width="0.7"/>`;
+    html+=`<text x="${(u.c[0]-5.8).toFixed(1)}" y="${(u.c[1]+5.6).toFixed(1)}" text-anchor="start" class="uf-pct-text">${leadPct}%</text>`;
+   }
+   html+=`</g>`;
+  }
+  return html;
+ }
+
+ function updateBrasilMapColors(){
+  if(!brasilGeo||!brasilSvgBuilt)return;
+  const svg=canvas.querySelector('svg');
+  if(!svg)return;
+  const muniEls=svg.querySelectorAll('.muni-path');
+  muniEls.forEach(el=>{
+   const idx=Number(el.dataset.muni);
+   const m=brasilGeo.munis[idx];
+   if(!m)return;
+   const v=muniVotesById.get(m.id);
+   const fill=v&&v.f>0?muniFillFromMargin(v.leader,v.margin):MUNI_NODATA;
+   if(el.getAttribute('fill')!==fill)el.setAttribute('fill',fill);
+   const op=selected&&selected!==m.uf?'0.28':'1';
+   if(el.getAttribute('opacity')!==op)el.setAttribute('opacity',op);
+  });
+  const ufHits=svg.querySelectorAll('.uf-hit');
+  ufHits.forEach(el=>{
+   const uf=el.dataset.place;
+   el.classList.toggle('map-selected',uf===selected);
+  });
+  const labelsLayer=svg.querySelector('#uf-labels-layer');
+  if(labelsLayer){
+   labelsLayer.innerHTML=buildUfLabelsHtml();
+  }
+ }
+
  function render(){
-  const geo=mode==='brasil'?getBrazil():world;
-  if(!geo){
-   canvas.innerHTML='<p class="empty">Carregando malha geográfica…</p>';
+  canvas.classList.toggle('brasil-muni-mode',mode==='brasil'&&!!brasilGeo);
+  if(mode==='brasil'&&brasilGeo){
+   if(!brasilSvgBuilt||!canvas.querySelector('svg[data-muni-svg="1"]')){
+    const muniPaths=brasilGeo.munis.map(m=>{
+     const v=muniVotesById.get(m.id);
+     const fill=v&&v.f>0?muniFillFromMargin(v.leader,v.margin):MUNI_NODATA;
+     const op=selected&&selected!==m.uf?'0.28':'1';
+     const stateName=getStates()[m.uf]||m.uf;
+     return `<path d="${m.d}" fill="${fill}" opacity="${op}" class="muni-path" data-muni="${m.i}" data-uf="${m.uf}" data-name="${esc(stateName)}"></path>`;
+    }).join('');
+    const ufHitPaths=Object.values(brasilGeo.ufs).map(u=>{
+     const name=getStates()[u.uf]||u.uf;
+     return `<path d="${u.outlineD}" class="uf-hit ${u.uf===selected?'map-selected':''}" data-place="${esc(u.uf)}" data-name="${esc(name)}" tabindex="0" role="button" aria-label="${esc(name)}" style="pointer-events:stroke"></path>`;
+    }).join('');
+    canvas.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" data-muni-svg="1" aria-label="Mapa de calor do Brasil por município"><g id="muni-layer">${muniPaths}</g><path d="${brasilGeo.lines.muni}" class="muni-lines"/><path d="${brasilGeo.lines.uf}" class="uf-lines"/><path d="${brasilGeo.lines.edge}" class="edge-lines"/><g id="uf-hit-layer">${ufHitPaths}</g><g id="uf-labels-layer">${buildUfLabelsHtml()}</g></svg>`;
+    brasilSvgBuilt=true;
+   }else{
+    updateBrasilMapColors();
+   }
+   view();
    detail();
    updateCandidateBar();
-   return;
+  }else{
+   brasilSvgBuilt=false;
+   const geo=mode==='brasil'?getBrazil():world;
+   if(!geo){
+    canvas.innerHTML='<p class="empty">Carregando malha geográfica…</p>';
+    detail();
+    updateCandidateBar();
+    return;
+   }
+   const groups=countries(),matched=new Set();
+   const project=mode==='brasil'?([x,y])=>[(x+75)*10,(7-y)*10]:([x,y])=>[(x+180)*1000/360,(85-y)*520/170];
+
+   const shapes=geo.features.filter(f=>mode==='brasil'||f.properties.iso!=='AQ').map(f=>{
+    const code=mode==='brasil'?ids[f.properties.codarea]:key(f.properties.name);
+    const d=mode==='brasil'?dataFor(code):groups[code];
+    if(d)matched.add(code);
+    const name=mode==='brasil'?getStates()[code]:f.properties.name;
+    return `
+     <path d="${path(f.geometry,project)}" fill="${heatColor(d?.red||0,d?.blue||0)}" class="${code===selected?'map-selected':''}" ${d||mode==='brasil'?`data-place="${esc(code)}" data-name="${esc(name)}" tabindex="0" role="button" aria-label="${esc(name)}"`:''}>
+     </path>
+    `;
+   }).join('');
+
+   const markers=mode==='mundo'?Object.entries(groups).filter(([k])=>!matched.has(k)).map(([k,d])=>{
+    const coord=small[d.name];
+    if(!coord)return '';
+    const[x,y]=project(coord);
+    return `
+     <circle cx="${x}" cy="${y}" r="5" fill="${heatColor(d.red,d.blue)}" class="${k===selected?'map-selected':''}" data-place="${k}" data-name="${esc(d.name)}" tabindex="0" role="button" aria-label="${esc(d.name)}">
+     </circle>
+    `;
+   }).join(''):'';
+
+   canvas.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" aria-label="Mapa de calor ${mode==='brasil'?'do Brasil':'mundial dos votos brasileiros no exterior'}">${shapes}${markers}</svg>`;
+   view();
+   detail();
+   updateCandidateBar();
   }
-  const groups=countries(),matched=new Set();
-  const project=mode==='brasil'?([x,y])=>[(x+75)*10,(7-y)*10]:([x,y])=>[(x+180)*1000/360,(85-y)*520/170];
-
-  const shapes=geo.features.filter(f=>mode==='brasil'||f.properties.iso!=='AQ').map(f=>{
-   const code=mode==='brasil'?ids[f.properties.codarea]:key(f.properties.name);
-   const d=mode==='brasil'?dataFor(code):groups[code];
-   if(d)matched.add(code);
-   const name=mode==='brasil'?getStates()[code]:f.properties.name;
-   return `
-    <path d="${path(f.geometry,project)}" fill="${heatColor(d?.red||0,d?.blue||0)}" class="${code===selected?'map-selected':''}" ${d||mode==='brasil'?`data-place="${esc(code)}" data-name="${esc(name)}" tabindex="0" role="button" aria-label="${esc(name)}"`:''}>
-    </path>
-   `;
-  }).join('');
-
-  const markers=mode==='mundo'?Object.entries(groups).filter(([k])=>!matched.has(k)).map(([k,d])=>{
-   const coord=small[d.name];
-   if(!coord)return '';
-   const[x,y]=project(coord);
-   return `
-    <circle cx="${x}" cy="${y}" r="5" fill="${heatColor(d.red,d.blue)}" class="${k===selected?'map-selected':''}" data-place="${k}" data-name="${esc(d.name)}" tabindex="0" role="button" aria-label="${esc(d.name)}">
-    </circle>
-   `;
-  }).join(''):'';
-
-  canvas.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" aria-label="Mapa de calor ${mode==='brasil'?'do Brasil':'mundial dos votos brasileiros no exterior'}">${shapes}${markers}</svg>`;
-  view();
-  detail();
-  updateCandidateBar();
 
   const formatBrasilia=ts=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(ts?new Date(ts):new Date());
   const nowBrasilia=formatBrasilia(lastCheckedAt||Date.now());
@@ -1159,9 +1478,49 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    :'<b>Fonte dos dados:</b> arquivos oficiais de totalização e apuração municipal do Tribunal Superior Eleitoral (TSE). Malha: IBGE.';
  }
 
+ function applyMuniLiveFeed(feed){
+  if(!feed?.br||!brasilGeo)return;
+  const br=feed.br;
+  const order=brasilGeo.sortedOrder;
+  const n=Math.min(order.length,br.f?.length||0);
+  for(let k=0;k<n;k++){
+   const muniIdx=order[k];
+   const m=brasilGeo.munis[muniIdx];
+   if(!m)continue;
+   const f=(br.f[k]||0)/1000;
+   const leader=br.l[k]||0;
+   const margin=(br.m[k]||0)/1000;
+   const validos=br.v[k]||0;
+   if(f>0&&leader){
+    const leadShare=(1+margin)/2;
+    const lShare=Number(leader)===13?leadShare:1-leadShare;
+    const lula=Math.round(validos*lShare);
+    const bolsonaro=Math.max(0,validos-lula);
+    const existing=muniVotesById.get(m.id);
+    if(!existing||!existing.totalSecoes){
+     muniVotesById.set(m.id,{f,leader,margin,lula,bolsonaro,validos});
+    }
+   }
+  }
+ }
+
+ async function refreshMuniLive(){
+  try{
+   const r=await fetch('/api/municipios-live');
+   if(!r.ok)return;
+   const j=await r.json();
+   if(j?.data){
+    muniLiveFeed=j.data;
+    applyMuniLiveFeed(muniLiveFeed);
+    if(mode==='brasil')render();
+   }
+  }catch{}
+ }
+
  async function refresh(){
   lastCheckedAt=Date.now();
   if(typeof onRefresh==='function')try{onRefresh()}catch{}
+  refreshMuniLive();
   try{
    const r=await fetch('/api/exterior');
    if(!r.ok)throw Error('Feed indisponível');
@@ -1205,7 +1564,8 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    e.stopPropagation();
    return;
   }
-  const p=e.target.closest('[data-place]')?.getAttribute('data-place')||targetPlaceCandidate;
+  const el=e.target.closest('[data-place],[data-uf]');
+  const p=(el&&(el.getAttribute('data-place')||el.getAttribute('data-uf')))||targetPlaceCandidate;
   if(p)selectPlace(p);
  });
  canvas.addEventListener('keydown',e=>{
@@ -1245,8 +1605,8 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    dragStartPos={x:e.clientX,y:e.clientY};
    dragStartPan=[...pan];
    gestureMoved=false;
-   const placeEl=e.target.closest('[data-place]');
-   targetPlaceCandidate=placeEl?(placeEl.getAttribute('data-place')||placeEl.dataset.place):null;
+   const placeEl=e.target.closest('[data-place],[data-uf]');
+   targetPlaceCandidate=placeEl?(placeEl.getAttribute('data-place')||placeEl.dataset.place||placeEl.getAttribute('data-uf')||placeEl.dataset.uf):null;
   }else if(activePointers.size===2){
    gestureMoved=true;
    targetPlaceCandidate=null;
@@ -1365,15 +1725,18 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    hideTooltip();
    return;
   }
-  const placeEl=e.target.closest('[data-place]');
+  const placeEl=e.target.closest('[data-place],[data-uf]');
   if(!placeEl){
    hideTooltip();
    return;
   }
-  const code=placeEl.dataset.place;
+  const code=placeEl.dataset.place||placeEl.dataset.uf;
   const name=placeEl.dataset.name||code;
   if(activeTooltipPlace!==code){
    activeTooltipPlace=code;
+   canvas.querySelectorAll('.uf-hit.uf-hovered').forEach(el=>el.classList.remove('uf-hovered'));
+   const ufHit=canvas.querySelector(`.uf-hit[data-place="${code}"]`);
+   if(ufHit)ufHit.classList.add('uf-hovered');
    tooltip.innerHTML=renderTooltipContent(code,name);
    tooltip.hidden=false;
   }
@@ -1401,7 +1764,12 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  document.querySelector('#zoom-reset').onclick=()=>selectPlace(null);
  document.querySelector('#map-refresh').onclick=refresh;
 
- fetch('/world.json').then(r=>r.json()).then(g=>{world=g;render()}).catch(()=>{canvas.textContent='Não foi possível carregar a malha mundial.'});
+ fetch('/brasil-topo.json').then(r=>r.json()).then(topo=>{
+  brasilGeo=decodeBrasilTopo(topo);
+  if(muniLiveFeed)applyMuniLiveFeed(muniLiveFeed);
+  render();
+ }).catch(err=>console.error('Erro ao carregar malha municipal:',err));
+  fetch('/world.json').then(r=>r.json()).then(g=>{world=g;render()}).catch(()=>{canvas.textContent='Não foi possível carregar a malha mundial.'});
  refresh();
  setInterval(refresh,5000);
  document.addEventListener('atlas-update',()=>{lastCheckedAt=Date.now();render()});
