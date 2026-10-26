@@ -4,13 +4,23 @@
 
 O **Pulso Eleitoral** é um projeto independente criado para acompanhar a apuração do segundo turno das eleições brasileiras de 2026. A aplicação reuniu resultados oficiais, mapas, séries temporais e modelos de projeção em uma interface acessível, com atenção à origem dos dados e à diferença entre **votos efetivamente apurados** e **estimativas estatísticas**.
 
-> **Status: pós-eleição.** Com a votação de 25 de outubro de 2026 encerrada, este repositório passa a documentar a solução desenvolvida, suas escolhas técnicas e sua metodologia. A interface conserva componentes originalmente pensados para atualização ao vivo; sua consulta hoje depende da disponibilidade das fontes externas. O projeto não é um serviço oficial de divulgação de resultados.
+> **Status: apuração encerrada.** O site agora consulta o arquivo versionado de resultados, sem polling, contador ao vivo ou projeção ativa. Os módulos de modelagem permanecem no código para documentação e testes. O projeto não é um serviço oficial de divulgação de resultados.
 
 **Período analisado:** 1º turno (4/10/2026) e 2º turno (25/10/2026).  
 **Stack:** JavaScript, Node.js 22+, HTML, CSS, SVG e APIs HTTP.  
 **Repositório:** [github.com/flavio-silva0/pulso-eleitoral-2026](https://github.com/flavio-silva0/pulso-eleitoral-2026).
 
 ---
+
+## Arquivo de encerramento
+
+Os handlers de produção e o servidor local usam exclusivamente `lib/archive.mjs` e `data/election-archive.json`. Captura em 26/10/2026; carga nacional do TSE de 25/10/2026 às 23:27:02 (Brasília), com 100% das seções. Consultar o site não muda a data da carga. O total BR já inclui o exterior, que não é somado novamente ao placar. A indicação de eleito vem do campo oficial.
+
+Foram preservados os resultados presidenciais de BR, 27 UFs e ZZ, arquivos disponíveis de governador, curvas dos turnos e feeds dos mapas. Os JSONs brutos diretamente obtidos do TSE estão em `data/raw/`. Ausência de arquivo estadual de segundo turno não implica resultado zero.
+
+A contagem auxiliar por cidade do exterior tem cobertura parcial (776 de 1.351 seções) e é identificada como histórica, diferente da totalização final oficial de ZZ disponível no placar. Detalhes municipais podem ter cobertura parcial por indisponibilidade ou limitação das consultas de origem. `reconciliation` registra divergências entre soma municipal disponível e total estadual; registros ausentes não são apresentados como zero votos. O mapa compacto auxiliar possui margem arredondada e não serve para reconstruir votos exatos.
+
+`/api/presence` e `/api/projecao` respondem HTTP 410; `/api/archive` informa a captura e a cobertura. O script `scripts/archive-results.mjs` não executa no build nem em produção; qualquer recaptura exige revisão das fontes e da reconciliação.
 
 ## O que foi construído
 
@@ -19,7 +29,7 @@ O **Pulso Eleitoral** é um projeto independente criado para acompanhar a apura�
 | **01 · Mapa eleitoral** | Mapa de calor do Brasil com detalhamento por município, visão por região e UF, navegação com zoom e mapa mundial dos votos brasileiros no exterior. A intensidade das cores representa a vantagem proporcional entre os dois candidatos. |
 | **02 · Apuração** | Consulta à votação para presidente e, onde aplicável, governador; total nacional, UFs e exterior; votos nominais e percentuais, seções totalizadas, comparecimento, abstenções, brancos e nulos. Inclui favoritos locais, exportação CSV e modo telão. |
 | **03 · 1º × 2º turno** | Comparação das curvas históricas de apuração presidencial, com eixos por horário real, horários de início alinhados ou percentual de seções totalizadas. Permite alternar entre o confronto direto dos candidatos e a participação sobre todos os votos válidos. |
-| **04 · Projeção estatística** | Estimativa do resultado final a partir de dados parciais, com método principal de *Logit Swing Municipal*, cenários alternativos, faixas de incerteza, probabilidade estimada de vitória e análise das 27 UFs. |
+| **04 · Projeção estatística (histórico do projeto; desativada no site)** | Estimativa do resultado final a partir de dados parciais, com método principal de *Logit Swing Municipal*, cenários alternativos, faixas de incerteza, probabilidade estimada de vitória e análise das 27 UFs. |
 
 ### Destaques de engenharia
 
@@ -138,7 +148,9 @@ npm test
 
 É possível definir a porta do servidor com a variável de ambiente `PORT`.
 
-> A abertura local não transforma o projeto em um arquivo offline da eleição: várias telas ainda consultam serviços remotos. Se um feed não responder, a funcionalidade correspondente poderá apresentar indisponibilidade, mesmo que o aplicativo inicie normalmente.
+> A versão de encerramento serve resultados a partir do snapshot local versionado; a disponibilidade das antigas fontes externas não afeta essas consultas.
+
+As descrições de cache, consultas externas e acúmulo de histórico acima documentam a arquitetura usada durante a apuração. Na versão atual, as rotas servem apenas o arquivo preservado. `npm test` executa os testes unitários; os roteiros `test/test-*-browser.mjs` são verificações manuais legadas de Chrome.
 
 ## Limitações e preservação histórica
 

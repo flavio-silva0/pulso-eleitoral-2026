@@ -1991,3 +1991,7 @@ select{background:#ffffff;border:1px solid var(--line);border-radius:6px;padding
     font-size: 15px;
   }
 }
+
+/* Encerramento: status estático, sem pulsos de acompanhamento ao vivo. */
+.closed-badge{font-size:11px;font-weight:800;letter-spacing:.06em;color:#166534;background:#dcfce7;padding:7px 10px;border-radius:6px;white-space:nowrap}
+.live-dot-mini,.live-pulse{display:none!important}

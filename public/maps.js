@@ -156,8 +156,8 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   <section id="maps-page" hidden>
    <div class="map-heading">
     <div class="map-heading-title">
-     <span class="eyebrow">MAPA ELEITORAL · 2º TURNO</span>
-     <h1>Um país. <em>Pelo mundo.</em></h1>
+     <span class="eyebrow">APURAÇÃO ENCERRADA · 2º TURNO</span>
+     <h1>Resultado final. <em>Brasil e exterior.</em></h1>
     </div>
     <div class="map-toolbar">
      <div class="tabs">
@@ -165,7 +165,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
       <button data-map-mode="mundo">Mundo · Exterior</button>
      </div>
      <span id="map-freshness">Consultando resultados…</span>
-     <button id="map-refresh">↻ Atualizar</button>
+     <button id="map-refresh">↻ Recarregar arquivo</button>
     </div>
    </div>
 
@@ -248,12 +248,9 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     <aside class="map-detail" id="map-detail"></aside>
    </div>
    <div class="map-bottom-bar" id="map-bottom-bar">
-    <div class="bottom-live-badge" title="Pessoas acompanhando a apuração ao vivo agora">
-     <span class="live-pulse"></span>
-     <span class="live-text"><strong class="live-counter-val">1</strong> <span class="live-label-text">pessoa ao vivo</span></span>
-    </div>
+    <div class="closed-badge">APURAÇÃO ENCERRADA</div>
     <div class="bottom-update">
-     <span class="update-label">Última atualização:</span>
+     <span class="update-label">Carga nacional:</span>
      <strong class="last-update-val">—</strong>
      <span class="tz-label">(horário de Brasília)</span>
     </div>
@@ -262,7 +259,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   </section>
  `);
 
- document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Apuração</a><a href="#curva">03 · 1º × 2º turno</a><a href="#projecao">04 · Projeção</a>';
+ document.querySelector('nav').innerHTML='<a href="#mapas" class="current">01 · Mapa</a><a href="#painel">02 · Resultados</a><a href="#curva">03 · 1º × 2º turno</a>';
  document.querySelector('.columns').hidden=true;
  document.querySelector('.transparency').hidden=true;
  const root=document.querySelector('#maps-page'),canvas=document.querySelector('#heat-map'),tooltip=root.querySelector('#map-tooltip'),mapWrap=root.querySelector('.map-canvas-wrap');
@@ -304,6 +301,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  }
 
  function route(){
+  if(location.hash==='#projecao')location.hash='#painel';
   const show=location.hash!=='#painel'&&location.hash!=='#curva'&&location.hash!=='#projecao';
   document.body.classList.toggle('maps-view',show);
   root.hidden=!show;
@@ -433,53 +431,10 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  }
 
  function getWorldTotals(){
-  const br=getBrasilTotals();
-  const ext=getExteriorTotals();
-
-  if(br.total>0){
-   return {
-    red:br.red+ext.red,
-    blue:br.blue+ext.blue,
-    counted:br.counted+ext.counted,
-    totalSections:br.total+ext.total,
-    br,
-    ext
-   };
-  }
-
-  const nat=typeof getNational==='function'?getNational():null;
-  if(nat&&nat.sourceKind==='combined'){
-   const cands=nat.candidates||[];
-   return {
-    red:cands.find(c=>c.number==='13')?.votes||0,
-    blue:cands.find(c=>c.number==='22')?.votes||0,
-    counted:nat.counted||0,
-    totalSections:nat.sections||0,
-    br,
-    ext
-   };
-  }
-
-  if(nat&&nat.sections>0){
-   const cands=nat.candidates||[];
-   return {
-    red:(cands.find(c=>c.number==='13')?.votes||0)+ext.red,
-    blue:(cands.find(c=>c.number==='22')?.votes||0)+ext.blue,
-    counted:(nat.counted||0)+ext.counted,
-    totalSections:(nat.sections||0)+ext.total,
-    br,
-    ext
-   };
-  }
-
-  return {
-   red:ext.red,
-   blue:ext.blue,
-   counted:ext.counted,
-   totalSections:ext.total,
-   br,
-   ext
-  };
+  const nat=getNational();
+  const br=getBrasilTotals(),ext=getExteriorTotals();
+  const cands=nat?.candidates||[];
+  return {red:cands.find(c=>c.number==='13')?.votes||0,blue:cands.find(c=>c.number==='22')?.votes||0,counted:nat?.counted||0,totalSections:nat?.sections||0,br,ext};
  }
 
  function updateCandidateBar(){
@@ -509,23 +464,8 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   const bPct=tot?(blue/tot*100):50;
   const progressPct=totalSections?(counted/totalSections*100):0;
 
-  let headline='';
-  if(tot===0){
-   headline='Aguardando apuração';
-  }else if(progressPct<1){
-   headline='Ainda é cedo: menos de 1% das seções';
-  }else if(progressPct>=99.8){
-   headline=red>blue?'Lula eleito Presidente da República':'Flávio Bolsonaro eleito Presidente da República';
-  }else{
-   const diff=Math.abs(lPct-bPct);
-   if(diff<0.5){
-    headline='Disputa voto a voto';
-   }else if(red>blue){
-    headline='Lula lidera no total geral (Brasil + Exterior)';
-   }else{
-    headline='Flávio lidera no total geral (Brasil + Exterior)';
-   }
-  }
+  const elected=getNational()?.candidates?.find(c=>c.elected);
+  const headline=elected?elected.name+' eleito Presidente da República':'Resultado preservado · consulte a situação oficial';
 
   const lPctStr=tot?lPct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
   const bPctStr=tot?bPct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
@@ -686,7 +626,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     if(mode==='brasil'&&brasilSvgBuilt)updateBrasilMapColors();
    }
   }catch(e){
-   console.error('Erro ao buscar cidades ao vivo:',e);
+   console.error('Erro ao buscar cidades no arquivo preservado:',e);
   }finally{
    loadingStates.delete(uf);
    if(selected===uf){
@@ -740,10 +680,10 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
      <div class="mun-card waiting">
       <div class="mun-header">
        <b class="mun-name">${esc(c.nome)}</b>
-       <span class="mun-badge-waiting">0/${fmt(c.totalSecoes)} seções · Aguardando</span>
+       <span class="mun-badge-waiting">Sem contagem preservada</span>
       </div>
       <div class="mun-bar-empty"></div>
-      <div class="mun-waiting-text">Aguardando início da apuração oficial pelo TSE</div>
+      <div class="mun-waiting-text">Contagem municipal ausente no arquivo; consulte o total da UF</div>
      </div>
     `;
    }
@@ -765,7 +705,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    container.innerHTML=`
     <div class="cities-loading">
      <div class="spinner"></div>
-     <p>Consultando apuração ao vivo dos municípios no TSE…</p>
+     <p>Carregando os registros municipais preservados…</p>
     </div>
    `;
    if(countBadge)countBadge.textContent='Consultando TSE…';
@@ -777,7 +717,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   const countedList=allCities.filter(c=>c.apurado||c.secoes>0);
   if(countBadge){
    countBadge.innerHTML=countedList.length>0
-    ? `<strong class="green-text">${countedList.length}</strong> de ${allCities.length} apurados`
+    ? `<strong class="green-text">${countedList.length}</strong> de ${allCities.length} com contagem preservada`
     : `${allCities.length} municípios`;
   }
 
@@ -792,7 +732,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
 
   if(list.length===0){
    container.innerHTML=cityFilter==='counted'&&countedList.length===0
-    ? '<div class="cities-empty"><p>Nenhum município deste estado teve votos apurados ainda.</p><small>Assim que o TSE divulgar seções, elas aparecerão aqui ao vivo.</small></div>'
+    ? '<div class="cities-empty"><p>Detalhamento municipal indisponível no arquivo desta UF.</p><small>Consulte o resultado consolidado da UF no placar.</small></div>'
     : '<div class="cities-empty"><p>Nenhum município encontrado com este nome.</p></div>';
    if(moreBtn)moreBtn.style.display='none';
    return;
@@ -826,13 +766,13 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     </div>
     ${exterior?.data?`
      <button class="exterior-region" data-map-mode="mundo">
-      <b>◎ Votos no Exterior ↗</b>
+      <b>◎ Arquivo parcial do exterior ↗</b>
       <span class="red-text"><img src="/lula.webp" class="mini-photo" alt="Lula"> 13 · ${fmt(exterior.data.total['13'])}</span>
       <span class="blue-text"><img src="/bolsonaro.webp" class="mini-photo" alt="Flávio"> 22 · ${fmt(exterior.data.total['22'])}</span>
       <small>${fmt(exterior.data.total.secoes)} seções apuradas no exterior</small>
      </button>
     `:''}
-    <p class="footnote">Toque em qualquer estado no mapa para aproximar e ver todos os municípios ao vivo.</p>
+    <p class="footnote">Toque em um estado para explorar o arquivo municipal. A cobertura disponível pode ser parcial; os totais estaduais vêm da totalização oficial.</p>
    `:`
     <div class="detail-header">
      <div class="detail-title-wrap">
@@ -919,7 +859,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     </div>
     <div class="summary-line">
      <span>Diferença atual:</span>
-     <strong>${total?fmt(Math.abs(d.red-d.blue))+' votos ('+(Math.abs(d.red-d.blue)/total*100).toFixed(2).replace('.',',')+'%)':'Aguardando apuração'}</strong>
+     <strong>${total?fmt(Math.abs(d.red-d.blue))+' votos ('+(Math.abs(d.red-d.blue)/total*100).toFixed(2).replace('.',',')+'%)':'Sem resultado no arquivo'}</strong>
     </div>
    </div>
 
@@ -936,7 +876,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
       <div class="cities-filter-tabs">
        <button class="city-filter-btn ${cityFilter==='all'?'active':''}" data-city-filter="all">Todos</button>
        <button class="city-filter-btn ${cityFilter==='counted'?'active':''}" data-city-filter="counted">Com votos apurados</button>
-       <button id="city-refresh-btn" class="city-refresh-btn" title="Recarregar dados ao vivo do TSE">↻ Atualizar</button>
+       <button id="city-refresh-btn" class="city-refresh-btn" title="Recarregar dados no arquivo preservado do TSE">↻ Atualizar</button>
       </div>
       <div class="city-search-wrap">
        <input type="search" id="city-search" value="${esc(citySearch)}" placeholder="Buscar município (ex: Salvador)..." class="city-search-input">
@@ -1037,7 +977,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
    const diff=Math.abs(lVotes-bVotes);
    let badgeHtml='';
    if(!hasData){
-    badgeHtml=`<span class="tip-badge badge-gray">Aguardando votos</span>`;
+    badgeHtml=`<span class="tip-badge badge-gray">Sem votos no arquivo</span>`;
    }else if(lPct>bPct){
     badgeHtml=`<span class="tip-badge badge-red">● Lula +${fmt(diff)}</span>`;
    }else if(bPct>lPct){
@@ -1107,7 +1047,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
 
     let badgeHtml='';
     if(!hasData){
-     badgeHtml=`<span class="tip-badge badge-gray">Aguardando votos</span>`;
+     badgeHtml=`<span class="tip-badge badge-gray">Sem votos no arquivo</span>`;
     }else if(lVotes>bVotes){
      badgeHtml=`<span class="tip-badge badge-red">● Lula +${fmt(diff)}</span>`;
     }else if(bVotes>lVotes){
@@ -1180,7 +1120,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
     if(!d){
      badgeHtml=`<span class="tip-badge badge-gray">Sem seções</span>`;
     }else if(!hasData){
-     badgeHtml=`<span class="tip-badge badge-gray">Aguardando votos</span>`;
+     badgeHtml=`<span class="tip-badge badge-gray">Sem votos no arquivo</span>`;
     }else if(lVotes>bVotes){
      badgeHtml=`<span class="tip-badge badge-red">● Lula +${fmt(diff)}</span>`;
     }else if(bVotes>lVotes){
@@ -1461,21 +1401,21 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
   }
 
   const formatBrasilia=ts=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(ts?new Date(ts):new Date());
-  const nowBrasilia=formatBrasilia(lastCheckedAt||Date.now());
+  const nowBrasilia=getNational()?.generated||getAtlas()?.SP?.data?.generated||'Arquivo preservado';
   document.querySelectorAll('.last-update-val').forEach(el=>el.textContent=nowBrasilia);
 
   const freshness=document.querySelector('#map-freshness');
   if(freshness){
    if(mode==='mundo'){
-    freshness.innerHTML=exterior?.error?'Última carga preservada':exterior?.data?`Boletins exterior: <b>${formatBrasilia(exterior.data.gerado)}</b> <small>(horário de Brasília)</small>`:'Aguardando feed do exterior';
+    freshness.innerHTML=exterior?.error?'Última carga preservada':exterior?.data?`Arquivo parcial do exterior: <b>${formatBrasilia(exterior.data.gerado)}</b> <small>(horário de Brasília)</small>`:'Arquivo do exterior indisponível';
    }else{
-    freshness.innerHTML=`Fonte: TSE oficial · Atualizado às <b>${nowBrasilia}</b> <small>(horário de Brasília)</small> · a cada 15 s`;
+    freshness.innerHTML=`Encerrada · carga TSE: <b>${getNational()?.generated||"consultar placar"}</b>`;
    }
   }
 
   document.querySelector('#map-source').innerHTML=mode==='mundo'
-   ?`<b>Fonte dos dados:</b> boletins de urna oficiais do exterior apurados pelo Tribunal Superior Eleitoral (TSE). Malha: Natural Earth.`
-   :'<b>Fonte dos dados:</b> arquivos oficiais de totalização e apuração municipal do Tribunal Superior Eleitoral (TSE). Malha: IBGE.';
+   ?`<b>Fonte dos dados:</b> arquivo parcial de boletins do exterior, via seuimposto.com. Não representa a totalização final do exterior. Malha: Natural Earth.`
+   :'<b>Fonte dos dados:</b> totalização oficial TSE; mapa municipal via seuimposto.com, com margem arredondada. Detalhes municipais preservados podem ter cobertura parcial. Malha: IBGE.';
  }
 
  function applyMuniLiveFeed(feed){
@@ -1771,7 +1711,7 @@ export function initMaps({getAtlas,getStates,getBrazil,getNational,onSelect,onRe
  }).catch(err=>console.error('Erro ao carregar malha municipal:',err));
   fetch('/world.json').then(r=>r.json()).then(g=>{world=g;render()}).catch(()=>{canvas.textContent='Não foi possível carregar a malha mundial.'});
  refresh();
- setInterval(refresh,5000);
+
  document.addEventListener('atlas-update',()=>{lastCheckedAt=Date.now();render()});
  route();
 

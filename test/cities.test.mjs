@@ -1,55 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLiveCities } from '../api/cities.mjs';
+import {archive, archivedResponse} from '../lib/archive.mjs';
 
-test('TSE Live Municipalities: Bahia validation', async () => {
-  const ba = await getLiveCities('BA');
-  assert.equal(ba.length, 417, 'Bahia should have 417 municipalities');
-
-  const counted = ba.filter(c => c.apurado || c.secoes > 0);
-  assert.ok(counted.length >= 2, 'Should have at least Salvador and Itapebi counted');
-
-  const salvador = ba.find(c => c.cd === '38490');
-  assert.ok(salvador, 'Salvador should exist');
-  assert.equal(salvador.nome, 'SALVADOR');
-  assert.ok(salvador.lula > 0, 'Salvador should have votes for Lula');
-  assert.ok(salvador.bolsonaro > 0, 'Salvador should have votes for Bolsonaro');
-  assert.ok(salvador.secoes > 0, 'Salvador should have counted sections');
-
-  const itapebi = ba.find(c => c.cd === '36277');
-  assert.ok(itapebi, 'Itapebi should exist');
-  assert.equal(itapebi.nome, 'ITAPEBI');
-  assert.ok(itapebi.lula > 0, 'Itapebi should have votes for Lula');
-  assert.ok(itapebi.bolsonaro > 0, 'Itapebi should have votes for Bolsonaro');
-  assert.ok(itapebi.secoes > 0, 'Itapebi should have counted sections');
-
-  // Sum of cities must equal the official Bahia state total from TSE
-  const lulaTotal = counted.reduce((s, c) => s + c.lula, 0);
-  const flavioTotal = counted.reduce((s, c) => s + c.bolsonaro, 0);
-  const secoesTotal = counted.reduce((s, c) => s + c.secoes, 0);
-
-  const res = await fetch('https://resultados.tse.jus.br/oficial/ele2026/6258/dados/ba/ba-c0001-e006258-u.json');
-  const d = await res.json();
-  const cands = d.carg[0].agr.flatMap(a => a.par.flatMap(p => p.cand));
-  const lulaState = Number(cands.find(c => c.n === '13').vap);
-  const flavioState = Number(cands.find(c => c.n === '22').vap);
-  const secoesState = Number(d.s.st);
-
-  assert.equal(lulaTotal, lulaState, 'City Lula sum must equal state Lula total');
-  assert.equal(flavioTotal, flavioState, 'City Flávio sum must equal state Flávio total');
-  assert.equal(secoesTotal, secoesState, 'City sections sum must equal state sections total');
+test('arquivo nacional concluído sem somar novamente o exterior',()=>{
+ const br=archivedResponse('results',new URLSearchParams('uf=BR')).body;
+ const all=archivedResponse('results',new URLSearchParams('uf=TODOS')).body;
+ assert.deepEqual(all.data,br.data);
+ assert.equal(br.data.finished,true);
+ assert.equal(br.data.progress,100);
+ assert.equal(br.data.candidates.reduce((sum,c)=>sum+c.votes,0),br.data.valid);
+ assert.equal(br.data.candidates.filter(c=>c.elected).length,1);
+ assert.equal(br.data.generated,'25/10/2026 23:27:02');
 });
-
-test('TSE Live Municipalities: Pará validation', async () => {
-  const pa = await getLiveCities('PA');
-  assert.equal(pa.length, 144, 'Pará should have 144 municipalities');
-
-  const counted = pa.filter(c => c.apurado || c.secoes > 0);
-  assert.ok(counted.length >= 2, 'Should have at least 2 counted municipalities in Pará');
-
-  const afua = pa.find(c => c.cd === '04057');
-  assert.ok(afua, 'Afuá should exist');
-  assert.ok(afua.lula > 0, 'Afuá should have votes for Lula');
-  assert.ok(afua.bolsonaro > 0, 'Afuá should have votes for Bolsonaro');
-  assert.ok(afua.secoes > 0, 'Afuá should have counted sections');
+test('consulta não altera o horário original e não acessa fontes remotas',()=>{
+ const previous=globalThis.fetch;
+ globalThis.fetch=()=>{throw Error('Consulta externa indevida');};
+ try{
+  for(const path of ['results','atlas','cities','exterior','municipios-live','curva']){
+   assert.deepEqual(archivedResponse(path),archivedResponse(path));
+   assert.equal(archivedResponse(path).status,200);
+  }
+ }finally{globalThis.fetch=previous;}
+});
+test('Bahia preserva 417 municípios e reconcilia votos e seções com a UF',()=>{
+ const cities=archivedResponse('cities',new URLSearchParams('uf=BA')).body;
+ const state=archive.results['presidente:BA'].data;
+ assert.equal(cities.length,417);
+ for(const [key,number] of [['lula','13'],['bolsonaro','22']])assert.equal(cities.reduce((sum,c)=>sum+c[key],0),state.candidates.find(c=>c.number===number).votes);
+ assert.equal(cities.reduce((sum,c)=>sum+c.secoes,0),state.counted);
+});
+test('contagem municipal ausente não é apresentada como zero votos',()=>{
+ const cities=archivedResponse('cities',new URLSearchParams('uf=SP')).body;
+ const missing=cities.filter(c=>!c.apurado);
+ assert.ok(missing.length>0);
+ for(const c of missing){assert.equal(c.lula,null);assert.equal(c.bolsonaro,null);}
+ assert.ok(archive.reconciliation.some(r=>r.uf==='SP'));
+});
+test('acompanhamento e projeção encerrados e entradas inválidas rejeitadas',()=>{
+ for(const path of ['presence','projecao'])assert.equal(archivedResponse(path).status,410);
+ for(const query of ['uf=XX','office=invalid','office=governador&uf=BR'])assert.equal(archivedResponse('results',new URLSearchParams(query)).status,400);
+ assert.equal(archivedResponse('cities',new URLSearchParams('uf=XX')).status,400);
+ const missing=archivedResponse('results',new URLSearchParams('office=governador&uf=SP')).body;
+ assert.ok(missing.error);assert.equal(missing.data,undefined);
 });

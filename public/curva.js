@@ -166,7 +166,7 @@ function render() {
   }
 
   const d = state.data;
-  $('#cv-status').textContent = state.error ? `⚠ ${state.error}` : d ? `Atualizado às ${new Date(d.checkedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}` : '';
+  $('#cv-status').textContent = state.error ? `⚠ ${state.error}` : d ? `Histórico preservado · captura às ${new Date(d.checkedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}` : '';
   $('#cv-status').classList.toggle('err', !!state.error || !!d?.t2?.error);
   if (!d) {
     $('#cv-cards').innerHTML = '';
@@ -232,7 +232,7 @@ function renderCards(t1, t2) {
   $('#cv-cards').innerHTML = `
    <article class="cv-card">
     <span class="cv-k">2º turno · agora</span>
-    ${now ? pair(nowM[0], nowM[1]) : '<div class="cv-pair cv-muted">Aguardando início da apuração nacional às 19h</div>'}
+    ${now ? pair(nowM[0], nowM[1]) : '<div class="cv-pair cv-muted">Sem registro histórico neste horário</div>'}
     <small>${now ? `${pc(now.p)} das seções · carga das ${hhmm(now.t)}${state.x === 'aligned' ? ` (+${Math.max(0, Math.round(now.t - 1140))}m)` : ''}` : 'A contagem nacional do 2º turno iniciou às 19:00.'}</small>
    </article>
    <article class="cv-card">
@@ -388,7 +388,7 @@ function route() {
   const on = active();
   document.body.classList.toggle('curva-view', on);
   $('#curva-page').hidden = !on;
-  if (on) { document.querySelectorAll('nav a').forEach(a => a.classList.toggle('current', a.hash === '#curva')); render(); if (!state.data || Date.now() - (state.data.checkedAt || 0) > 10000) load(); }
+  if (on) { document.querySelectorAll('nav a').forEach(a => a.classList.toggle('current', a.hash === '#curva')); render(); if (!state.data) load(); }
 }
 
 inject();
@@ -398,4 +398,3 @@ new ResizeObserver(([e]) => { const s = `${Math.round(e.contentRect.width)}x${Ma
 window.addEventListener('hashchange', route);
 route();
 load();
-setInterval(() => { if (active() && !document.hidden) load(); }, 15000);
