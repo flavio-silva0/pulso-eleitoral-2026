@@ -1,52 +1,159 @@
-# Pulso Eleitoral · 2026
+# Pulso Eleitoral 2026
 
-Painel independente para acompanhar o segundo turno brasileiro. Interface original inspirada na proposta de acompanhamento do seuimposto.com, com integração direta aos arquivos oficiais do TSE.
+**Dados públicos, visualização interativa e modelagem estatística da eleição brasileira de 2026.**
 
-## Rodar localmente
+O **Pulso Eleitoral** é um projeto independente criado para acompanhar a apuração do segundo turno das eleições brasileiras de 2026. A aplicação reuniu resultados oficiais, mapas, séries temporais e modelos de projeção em uma interface acessível, com atenção à origem dos dados e à diferença entre **votos efetivamente apurados** e **estimativas estatísticas**.
 
-Requer Node.js 22 ou superior. Não há dependências para instalar.
+> **Status: pós-eleição.** Com a votação de 25 de outubro de 2026 encerrada, este repositório passa a documentar a solução desenvolvida, suas escolhas técnicas e sua metodologia. A interface conserva componentes originalmente pensados para atualização ao vivo; sua consulta hoje depende da disponibilidade das fontes externas. O projeto não é um serviço oficial de divulgação de resultados.
 
-```sh
+**Período analisado:** 1º turno (4/10/2026) e 2º turno (25/10/2026).  
+**Stack:** JavaScript, Node.js 22+, HTML, CSS, SVG e APIs HTTP.  
+**Repositório:** [github.com/flavio-silva0/pulso-eleitoral-2026](https://github.com/flavio-silva0/pulso-eleitoral-2026).
+
+---
+
+## O que foi construído
+
+| Módulo | Funcionalidades |
+| --- | --- |
+| **01 · Mapa eleitoral** | Mapa de calor do Brasil com detalhamento por município, visão por região e UF, navegação com zoom e mapa mundial dos votos brasileiros no exterior. A intensidade das cores representa a vantagem proporcional entre os dois candidatos. |
+| **02 · Apuração** | Consulta à votação para presidente e, onde aplicável, governador; total nacional, UFs e exterior; votos nominais e percentuais, seções totalizadas, comparecimento, abstenções, brancos e nulos. Inclui favoritos locais, exportação CSV e modo telão. |
+| **03 · 1º × 2º turno** | Comparação das curvas históricas de apuração presidencial, com eixos por horário real, horários de início alinhados ou percentual de seções totalizadas. Permite alternar entre o confronto direto dos candidatos e a participação sobre todos os votos válidos. |
+| **04 · Projeção estatística** | Estimativa do resultado final a partir de dados parciais, com método principal de *Logit Swing Municipal*, cenários alternativos, faixas de incerteza, probabilidade estimada de vitória e análise das 27 UFs. |
+
+### Destaques de engenharia
+
+- Consumo e normalização dos arquivos **EA20 do TSE**, com validações de turno, eleição, abrangência e cargo.
+- Separação entre fontes oficiais, feeds históricos/auxiliares e cálculos produzidos pelo próprio projeto.
+- Cache em memória, deduplicação de consultas simultâneas, tratamento de falhas e preservação da última resposta válida quando disponível.
+- Interface responsiva desenvolvida com **JavaScript nativo**, sem framework de frontend ou dependências de execução instaladas pelo npm.
+- Visualizações próprias em SVG, incluindo cartografia interativa, curvas temporais e indicadores de incerteza.
+- Testes automatizados de normalização, dados externos, séries e projeções usando o test runner nativo do Node.js.
+
+## Como interpretar os dados
+
+O painel trabalha com três categorias de informação que **não devem ser confundidas**:
+
+| Tipo | Significado |
+| --- | --- |
+| **Resultado oficial** | Votos e indicadores publicados nos arquivos de totalização do Tribunal Superior Eleitoral (TSE). |
+| **Histórico ou contagem auxiliar** | Séries de apuração e boletins disponibilizados por feeds de terceiros, identificados separadamente e sujeitos à cobertura e disponibilidade de cada fornecedor. |
+| **Projeção estatística** | Estimativa calculada pelo aplicativo com base nos dados já observados e em hipóteses sobre os votos ainda não apurados. **Não é resultado oficial.** |
+
+Durante a apuração, a ordem de totalização das seções podia alterar significativamente os percentuais parciais: uma UF ou município que aparecesse primeiro não representava necessariamente o restante do eleitorado. Por isso, o projeto incorporou comparações territoriais e cenários de modelagem em vez de extrapolar apenas o percentual nacional momentâneo.
+
+## Metodologia de projeção
+
+O método padrão implementado em [`lib/projecao.mjs`](lib/projecao.mjs) é o **Logit Swing Municipal**. Ele compara o desempenho dos dois candidatos em municípios presentes no 1º e no 2º turnos, calcula a mudança relativa e a reaplica a uma distribuição nacional de referência.
+
+Para um município `m`, a transformação utilizada é:
+
+```text
+logit(p) = ln(p / (1 - p))
+
+swing_m = logit(p_m,2º turno) - logit(p_m,1º turno)
+```
+
+Aqui, `p` representa a proporção de votos de um candidato no confronto entre os candidatos 13 e 22, com tratamento numérico para valores extremos. O algoritmo pondera os deslocamentos observados, considera a distribuição de referência do 1º turno e estima a participação nacional ao final da contagem.
+
+A implementação também calcula uma aproximação de incerteza a partir da dispersão dos deslocamentos observados e da fração ainda não apurada. A interface apresenta faixas visuais de **50%, 80% e 99%** no método logit, além de uma estimativa de probabilidade obtida por aproximação normal.
+
+Outros métodos disponíveis para comparação:
+
+- **Estratificado por UF:** combina variações locais e regionais para estimar a distribuição dos votos restantes em cada estado.
+- **1º turno no restante:** aplica aos votos ainda não contados de cada UF a distribuição observada no primeiro turno.
+- **Extrapolação direta:** mantém para os votos restantes de cada UF a proporção já observada naquela unidade.
+
+**Limite metodológico:** os intervalos, probabilidades e critérios de definição antecipada são saídas de modelos sujeitos a hipóteses, viés de cobertura e erros de dados. Não representam garantias de acerto nem certificação pelo TSE. O motor principal utiliza transformações logit e aproximação normal; **não é uma simulação de Monte Carlo**. Encerrada a eleição, suas projeções devem ser interpretadas como parte do experimento analítico feito durante a apuração, não como substitutas do resultado final.
+
+## Fontes e rastreabilidade
+
+**Fonte primária:** [Tribunal Superior Eleitoral — divulgação de resultados](https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados), com arquivos consultados em [`resultados.tse.jus.br`](https://resultados.tse.jus.br/). O código usa o ambiente `oficial/ele2026`, com identificadores de eleição `6258` (presidência) e `6260` (governos estaduais), sempre para o segundo turno.
+
+**Fontes complementares previstas no código:**
+
+- [seuimposto.com](https://seuimposto.com/) — séries temporais do 1º e 2º turnos, feed municipal auxiliar e boletins do exterior anteriores à consolidação da totalização oficial.
+- [ApuraLogo](https://dados.apuralogo.com.br/) — feed municipal utilizado pelo motor de comparação estatística entre turnos.
+- [IBGE](https://servicodados.ibge.gov.br/) e [Natural Earth](https://www.naturalearthdata.com/) — referências para representação geográfica do Brasil e do mundo.
+
+A contagem auxiliar do exterior é identificada como tal e **não deve ser confundida nem somada em duplicidade** ao consolidado do TSE. Arquivos externos podem deixar de estar acessíveis depois do período eleitoral; sua disponibilidade atual não é garantida pelo repositório.
+
+## Arquitetura
+
+```mermaid
+flowchart TD
+    A[Arquivos oficiais EA20 do TSE] --> D[APIs Node.js]
+    B[Feeds auxiliares e históricos] --> D
+    C[Bases locais e geometria dos mapas] --> D
+    D --> E[Normalização, validação e cache]
+    E --> F[Interface HTML, CSS e JavaScript]
+    E --> G[Motor de projeção estatística]
+    G --> F
+    F --> H[Mapas, apuração, curvas e projeções]
+```
+
+O projeto possui um servidor HTTP para execução local (`server.mjs`) e funções de API individuais em `api/`, previstas na configuração de deploy da Vercel. Não exige chave de API para sua configuração básica.
+
+### Estrutura principal
+
+```text
+pulso-eleitoral-2026/
+├── api/                 # Endpoints de resultados, mapas, curvas e projeções
+├── lib/
+│   ├── tse.mjs          # Fonte oficial e normalização dos resultados EA20
+│   ├── exterior.mjs     # Validação e integração da contagem do exterior
+│   ├── curva.mjs        # Histórico e alinhamento dos turnos
+│   ├── projecao.mjs     # Motor estatístico e cenários alternativos
+│   └── *.json           # Bases de referência eleitoral
+├── public/
+│   ├── index.html       # Estrutura da interface
+│   ├── app.js           # Painel de resultados e interações gerais
+│   ├── maps.js          # Mapas do Brasil, municípios e exterior
+│   ├── curva.js         # Comparação visual entre turnos
+│   ├── projecao.js      # Interface da projeção estatística
+│   ├── style.css        # Estilos e responsividade
+│   └── *.json           # Dados geográficos e referências locais
+├── test/                # Testes automatizados
+├── server.mjs           # Servidor HTTP local
+├── package.json        # Comandos e requisito de Node.js
+└── vercel.json          # Configuração para deploy
+```
+
+## Executar localmente
+
+**Requisito:** Node.js **22 ou superior**. O projeto não declara dependências externas no `package.json`.
+
+```bash
+git clone https://github.com/flavio-silva0/pulso-eleitoral-2026.git
+cd pulso-eleitoral-2026
 npm start
 ```
 
-Abra http://localhost:3000. Para desenvolvimento: `npm run dev`. Testes: `npm test`.
+Acesse **http://localhost:3000**. Para desenvolvimento e testes:
 
-## Recursos
+```bash
+npm run dev
+npm test
+```
 
-- Votos nominais e percentuais por candidato, presidente e governador, por UF e exterior (presidente).
-- Atualização automática em 15 segundos; cache no servidor, deduplicação e espera de 120 segundos em falhas da fonte.
-- Progresso das seções, comparecimento, abstenções, brancos e nulos.
-- Favoritos locais, tema escuro, modo telão e exportação CSV.
-- Curva e últimas cargas observadas durante a execução, com snapshots brutos normalizados em `.runtime/snapshots.jsonl`.
-- Link direto à origem, horário da carga, indicação de falhas e preservação da última resposta válida.
+É possível definir a porta do servidor com a variável de ambiente `PORT`.
 
-## Dados e limitações
+> A abertura local não transforma o projeto em um arquivo offline da eleição: várias telas ainda consultam serviços remotos. Se um feed não responder, a funcionalidade correspondente poderá apresentar indisponibilidade, mesmo que o aplicativo inicie normalmente.
 
-Fonte: https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados
+## Limitações e preservação histórica
 
-Ambiente `oficial/ele2026`, eleição federal `6258` (cargo 1) e estadual `6260` (cargo 3). Os arquivos oficiais EA20 são consultados exclusivamente em `resultados.tse.jus.br`. A normalização valida ambiente, turno, eleição e abrangência. Nomes, partidos, votos e situação de eleito vêm da fonte; não há dados simulados no aplicativo.
+- O histórico observado pela rota de apuração é acumulado **durante a execução**; não equivale automaticamente a uma reprodução integral da noite eleitoral.
+- Na execução local, novas cargas podem ser registradas em `.runtime/snapshots.jsonl`. Esse diretório está no `.gitignore`, e os snapshots **não são reimportados automaticamente** ao reiniciar.
+- As séries históricas obtidas de fornecedores externos dependem da preservação desses feeds por seus responsáveis.
+- O percentual de **seções totalizadas** não é o mesmo que o percentual de **eleitores** ou de **votos** apurados.
+- A cobertura municipal e do exterior pode variar segundo a disponibilidade e o estágio de consolidação de cada fonte.
+- O repositório documenta uma ferramenta desenvolvida para a apuração de 2026; não constitui auditoria independente de boletins de urna, plataforma de certificação eleitoral ou serviço institucional do TSE.
 
-O resultado é parcial até a totalização. Percentual de seções não equivale a percentual do eleitorado. Estados sem disputa de segundo turno ou arquivos ainda não publicados podem retornar indisponibilidade. O histórico inicia na primeira consulta de cada disputa, fica em memória até reiniciar e não representa toda a noite anterior. Os snapshots ficam no disco para auditoria, mas não são reimportados automaticamente. A interface mostra a data da geração separada da última consulta; uma carga antiga não é apresentada como nova apuração.
+## Sobre o projeto
 
-O mapa interativo usa malha simplificada do IBGE, com liderança presidencial parcial e seleção por UF. A comparação dos estados ordena por percentual de seções totalizadas e atualiza a cada 15 segundos, com no máximo três requisições simultâneas ao TSE. Malha: https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo%2Bjson&qualidade=minima&intrarregiao=UF . Não há detalhamento municipal do Brasil, auditoria individual dos boletins, projeção estatística, comparação de turnos ou notificações push nesta versão. Fontes tipográficas do Google são opcionais, com fallback local.
+O Pulso Eleitoral 2026 nasceu da ideia de que uma apuração eleitoral pode ser analisada com mais profundidade do que um placar isolado. O desenvolvimento combinou **engenharia de dados, integração de fontes públicas, visualização geográfica e modelagem estatística**, com uma preocupação central: deixar claro **o que já havia sido contado, o que ainda faltava e o que era apenas uma estimativa**.
 
-## Arquivos
+Depois do segundo turno, o valor do projeto permanece no código, nas decisões de modelagem e nas visualizações construídas — um registro de como dados complexos e atualizados rapidamente podem ser apresentados de forma compreensível.
 
-- `server.mjs`: servidor HTTP e cache da fonte.
-- `lib/tse.mjs`: URLs oficiais e validação/normalização EA20.
-- `public/`: interface responsiva em HTML, CSS e JavaScript.
-- `test/`: testes com dados fictícios explicitamente restritos às fixtures de teste.
-
-Servidor restrito a `127.0.0.1`. A publicação em hospedagem exige adaptar o endereço de escuta e configurar HTTPS. Nenhuma chave de API é necessária.
-
-A captura original `download.devtools`, referências locais e snapshots não são enviados ao GitHub. Autoria: Flavio Silva.
-## Mapas e boletins do exterior
-
-A navegação tem duas abas: **Mapa** (inicial, Brasil e mundo, cores por vantagem proporcional e totais regionais na lateral) e **Apuração** (cabeçalho, filtros, placar e quatro indicadores).
-
-O TSE publica a totalização EA20 separadamente dos boletins de urna. Para exibir a contagem anterior à totalização do exterior, esta versão consulta o feed `https://seuimposto.com/feed/exterior-bu.json` a cada 15 segundos. O painel identifica explicitamente essa fonte secundária. Valida turno, cidades únicas, contagens inteiras, somas por cidade e total, mas não audita os BUs binários individualmente. Nunca soma esse feed ao resultado nacional. Quando o EA20 de ZZ tem seções totalizadas, o placar de ZZ prioriza o resultado oficial. O mapa mundial continua identificado como a contagem dos boletins do feed.
-
-O mapa mundial usa polígonos Natural Earth 1:110m (domínio público), obtidos de https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson . Territórios pequenos ausentes dessa escala recebem marcadores quando cadastrados. A lista lateral inclui todos os países do feed, mesmo quando não há polígono. A cobertura por país corresponde às cidades presentes no feed, não ao cadastro completo de seções desse país. No Brasil, os totais regionais são somas dos arquivos estaduais; horários de geração podem variar entre UFs.
-
-Cores: vermelho para 13, azul para 22; a intensidade representa a diferença de votos dividida pela soma dos dois candidatos. Cinza indica ausência de dados. Há seleção por teclado, zoom e deslocamento por arraste.
+**Desenvolvido por [Flavio Silva](https://github.com/flavio-silva0).**  
+*Projeto independente, sem vínculo institucional com o Tribunal Superior Eleitoral.*
