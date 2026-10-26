@@ -97,16 +97,17 @@ function inject() {
       <div class="pj-panel-head">
        <div>
         <span class="pj-panel-eyebrow">REGISTRO DO MODELO</span>
-        <h3 class="pj-panel-title">Evolução da Projeção Final</h3>
-        <p class="pj-panel-desc">O histórico de previsões da noite não foi preservado neste arquivo.</p>
+        <h3 class="pj-panel-title">Evolução da Projeção · Logit</h3>
+        <p class="pj-panel-desc">406 registros recuperados do deployment original · 25/out, 19h02–22h45 (Brasília). A série Logit permanece a mesma ao alternar os métodos do mostrador.</p>
        </div>
        <div class="pj-chart-legend">
         <span><i class="pj-sw pj-l"></i>Lula (Projetado)</span>
         <span><i class="pj-sw pj-f"></i>Flávio (Projetado)</span>
-        <span><span class="pj-ci-sample"></span>Margem de erro</span>
+        <span><span class="pj-ci-sample"></span>Faixa reconstruída</span>
         <span id="pj-status-text" class="pj-status-text"></span>
        </div>
       </div>
+      <p class="pj-panel-desc">A API antiga ajustava a curva à última estimativa e reconstruía a faixa de incerteza. O gráfico preserva essa saída; sua cobertura termina em 94,45% das seções.</p>
       <div id="pj-chart" class="pj-chart"><p class="pj-empty">Carregando histórico da projeção…</p></div>
       <div id="pj-chart-tip" class="cv-tip" hidden></div>
      </div>
@@ -633,14 +634,14 @@ function onChartMove(e) {
   `;
 
   const dt = new Date(best.t || Date.now());
-  const timeStr = dt.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+  const timeStr = dt.toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit'});
 
   tip.innerHTML = `
     <div class="cv-th">${pc(best.progress, 2)} apurado · ${timeStr}</div>
     <div class="cv-trow cv-thd"><span>Candidato</span><span>Projetado</span><span>Oficial</span></div>
     <div class="cv-trow"><span class="cv-tn"><i class="cv-sw cv-l"></i>Lula</span><span class="cv-tl">${pc(best.lulaPct, 2)}</span><span>${pc(best.rawLulaPct, 2)}</span></div>
     <div class="cv-trow"><span class="cv-tn"><i class="cv-sw cv-f"></i>Flávio</span><span class="cv-tf">${pc(best.flavioPct, 2)}</span><span>${pc(best.rawFlavioPct, 2)}</span></div>
-    <div class="cv-tdiff">Margem Lula: <b>${pc(best.lulaMin, 1)} a ${pc(best.lulaMax, 1)}</b></div>
+    <div class="cv-tdiff">Faixa reconstruída Lula: <b>${pc(best.lulaMin, 1)} a ${pc(best.lulaMax, 1)}</b></div>
   `;
   tip.hidden = false;
 
@@ -726,7 +727,7 @@ function render() {
     statusEl.textContent = state.error
       ? `⚠ ${state.error}`
       : d
-        ? `Arquivo de demonstração · captura às ${new Date(d.checkedAt || d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
+        ? `Histórico recuperado · captura às ${new Date(d.historyRecovery?.recoveredAt || d.checkedAt || d.updatedAt).toLocaleTimeString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`
         : '';
   }
 

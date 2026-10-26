@@ -169,3 +169,7 @@ Depois do segundo turno, o valor do projeto permanece no código, nas decisões 
 
 **Desenvolvido por [Flavio Silva](https://github.com/flavio-silva0).**  
 *Projeto independente, sem vínculo institucional com o Tribunal Superior Eleitoral.*
+
+### Recuperação do gráfico da aba 4
+
+A série Logit foi recuperada pela API autenticada do deployment original `a2479da`, preservada integralmente em `data/raw/projection-deployment-a2479da.json`. `data/projection-history.json` conserva 406 registros entre 25/10/2026 às 19:02 e 22:45 (Brasília), até 94,45% das seções. O ponto de 100% recalculado no dia da recuperação foi excluído do histórico da noite. A API legada ajustava os percentuais históricos à última estimativa e reconstruía os intervalos; a interface identifica esse processamento, sem apresentar a curva como snapshots independentes de previsões. O gráfico é sempre da série Logit recuperada, mesmo quando o método do mostrador é alternado. Os dados estão versionados e não exigem login na Vercel para o público.
